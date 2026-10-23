@@ -89,8 +89,7 @@ export default function WelcomeScreen({ onEnterMenu }) {
         <View style={styles.logoWrapper}>
           <View style={styles.logoGlow} />
           <Image
-            source={require('../../assets/rio_chico_orange_glow (1)_2.png')}
-            defaultSource={require('../../assets/rio_chico_orange_glow.png')}
+            source={require('../../assets/rio_chico_orange_glow.png')}
             style={styles.logoImage}
             resizeMode="contain"
           />

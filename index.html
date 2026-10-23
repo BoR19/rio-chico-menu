@@ -12,7 +12,7 @@
   <meta name="theme-color" content="#0c0a09">
   <meta name="description" content="Sistema integral para Restaurante Río Chico: Menú Digital, Comandas KDS en Tiempo Real, Control de Mesas con QR y Panel Administrativo. Tarija, Bolivia.">
   <link rel="manifest" href="manifest.json">
-  <link rel="apple-touch-icon" href="assets/rio_chico_orange_glow (1)_2.png">
+  <link rel="apple-touch-icon" href="assets/rio_chico_orange_glow.png">
 
   <!-- External Libraries via CDN -->
   <script src="https://unpkg.com/@tailwindcss/browser@4"></script>
@@ -118,7 +118,8 @@
         <div class="absolute -inset-4 bg-orange-500/25 rounded-full blur-2xl group-hover:bg-orange-500/40 transition-all"></div>
         <div class="relative w-36 h-36 md:w-40 md:h-40 flex items-center justify-center">
           <img
-            src="assets/rio_chico_orange_glow (1)_2.png"
+            id="hero-brand-logo"
+            src="assets/rio_chico_orange_glow.png"
             alt="Logo Río Chico"
             class="w-full h-full object-contain filter drop-shadow-[0_0_28px_rgba(249,115,22,0.7)]"
             onerror="renderSvgEmblemFallback(this, 150)"
@@ -186,7 +187,8 @@
         <div class="flex items-center gap-2.5 cursor-pointer" onclick="goToWelcomeScreen()">
           <div class="w-9 h-9 rounded-xl overflow-hidden bg-stone-900 border border-amber-500/30 flex items-center justify-center p-1 shadow-md">
             <img
-              src="assets/rio_chico_orange_glow (1)_2.png"
+              id="header-brand-logo"
+              src="assets/rio_chico_orange_glow.png"
               alt="Río Chico"
               class="w-full h-full object-contain filter drop-shadow-[0_0_8px_rgba(249,115,22,0.8)]"
               onerror="renderSvgEmblemFallback(this, 32)"
@@ -637,14 +639,52 @@
               </div>
             </div>
 
-            <!-- Carga de Logo Simulado -->
+            <!-- Configuración Dominio Web de Producción (Vercel) -->
             <div>
-              <label class="block text-xs text-stone-400 mb-1">Logotipo Oficial:</label>
-              <div class="p-3 rounded-xl border border-dashed border-stone-700 bg-stone-950 text-center">
-                <p class="text-xs text-stone-400">Logo actual: <strong class="text-amber-400">rio_chico_orange_glow.png</strong></p>
-                <button type="button" onclick="alert('Logo oficial cargado en /assets. Puedes reemplazarlo en cualquier momento.')" class="mt-2 px-3 py-1 rounded-lg bg-stone-800 text-xs text-stone-300">
-                  📁 Cambiar Archivo de Logo
-                </button>
+              <label class="block text-xs text-stone-400 mb-1 font-semibold">Dominio Web de Producción (Para Códigos QR de Mesa):</label>
+              <input id="brand-domain-input" type="url" placeholder="https://rio-chico-menu.vercel.app" class="w-full px-3 py-2 rounded-xl bg-stone-950 border border-stone-700 text-amber-400 font-mono text-xs focus:outline-none focus:border-amber-500" />
+              <p class="text-[10px] text-stone-500 mt-1">Si lo dejas en blanco, usará automáticamente el dominio actual del navegador.</p>
+            </div>
+
+            <!-- Carga de Logotipo Oficial -->
+            <div>
+              <label class="block text-xs text-stone-400 mb-1 font-semibold">Logotipo Oficial del Restaurante:</label>
+              <div class="p-3 rounded-xl border border-dashed border-stone-700 bg-stone-950 flex items-center justify-between gap-3">
+                <div class="flex items-center gap-3 min-w-0">
+                  <div class="w-12 h-12 rounded-xl bg-stone-900 border border-stone-700 p-1 flex items-center justify-center flex-shrink-0 overflow-hidden">
+                    <img id="brand-logo-preview" src="assets/rio_chico_orange_glow.png" alt="Logo Actual" class="w-full h-full object-contain" />
+                  </div>
+                  <div class="min-w-0">
+                    <p class="text-xs text-white font-bold truncate" id="brand-logo-status">Logo Oficial Río Chico</p>
+                    <p class="text-[10px] text-stone-400">PNG o JPG con fondo transparente</p>
+                  </div>
+                </div>
+                <label class="px-3 py-2 rounded-lg bg-stone-800 hover:bg-stone-700 text-xs text-stone-200 font-bold cursor-pointer flex items-center gap-1.5 flex-shrink-0">
+                  <i data-lucide="upload" class="w-3.5 h-3.5"></i>
+                  <span>Subir Logo</span>
+                  <input type="file" id="brand-logo-file-input" accept="image/*" class="hidden" onchange="handleBrandLogoUpload(event)" />
+                </label>
+              </div>
+            </div>
+
+            <!-- Carga de QR Simple de Pago -->
+            <div>
+              <label class="block text-xs text-stone-400 mb-1 font-semibold">Código QR Simple de Cobro Bancario:</label>
+              <div class="p-3 rounded-xl border border-dashed border-stone-700 bg-stone-950 flex items-center justify-between gap-3">
+                <div class="flex items-center gap-3 min-w-0">
+                  <div class="w-12 h-12 rounded-xl bg-white p-1 flex items-center justify-center flex-shrink-0 overflow-hidden shadow">
+                    <img id="brand-payment-qr-preview" src="https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=REST_RIO_CHICO_TARIJA_PAGO_QR" alt="QR Cobro Actual" class="w-full h-full object-contain" />
+                  </div>
+                  <div class="min-w-0">
+                    <p class="text-xs text-white font-bold truncate">QR Simple Bolivia</p>
+                    <p class="text-[10px] text-stone-400">Banco Unión / Banca Móvil</p>
+                  </div>
+                </div>
+                <label class="px-3 py-2 rounded-lg bg-stone-800 hover:bg-stone-700 text-xs text-stone-200 font-bold cursor-pointer flex items-center gap-1.5 flex-shrink-0">
+                  <i data-lucide="upload" class="w-3.5 h-3.5"></i>
+                  <span>Subir QR</span>
+                  <input type="file" id="brand-payment-qr-file" accept="image/*" class="hidden" onchange="handlePaymentQrUpload(event)" />
+                </label>
               </div>
             </div>
 
@@ -661,7 +701,7 @@
             <div id="live-preview-card" class="rounded-3xl p-5 border border-stone-800 shadow-2xl relative overflow-hidden bg-stone-900 transition-all">
               <div class="flex items-center gap-3">
                 <div class="w-12 h-12 rounded-2xl bg-stone-950 border border-amber-500/40 p-1 flex items-center justify-center">
-                  <img src="assets/rio_chico_orange_glow (1)_2.png" alt="Preview Logo" class="w-full h-full object-contain" onerror="renderSvgEmblemFallback(this, 40)" />
+                  <img id="prev-brand-logo" src="assets/rio_chico_orange_glow.png" alt="Preview Logo" class="w-full h-full object-contain" onerror="renderSvgEmblemFallback(this, 40)" />
                 </div>
                 <div>
                   <h3 id="prev-brand-title" class="font-black text-lg text-white">Restaurante Río Chico</h3>

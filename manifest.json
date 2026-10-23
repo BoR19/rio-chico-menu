@@ -9,13 +9,13 @@
   "orientation": "portrait-primary",
   "icons": [
     {
-      "src": "assets/rio_chico_orange_glow (1)_2.png",
+      "src": "assets/rio_chico_orange_glow.png",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "any maskable"
     },
     {
-      "src": "assets/rio_chico_orange_glow (1)_2.png",
+      "src": "assets/rio_chico_orange_glow.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any maskable"

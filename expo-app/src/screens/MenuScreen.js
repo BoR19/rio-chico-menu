@@ -166,8 +166,7 @@ export default function MenuScreen({ onGoHome }) {
       <View style={styles.header}>
         <TouchableOpacity onPress={onGoHome} style={styles.headerBrand}>
           <Image
-            source={require('../../assets/rio_chico_orange_glow (1)_2.png')}
-            defaultSource={require('../../assets/rio_chico_orange_glow.png')}
+            source={require('../../assets/rio_chico_orange_glow.png')}
             style={styles.headerLogo}
             resizeMode="contain"
           />
