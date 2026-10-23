@@ -1601,18 +1601,25 @@
     // ==========================================
     // SEGUIMIENTO DE COMANDA (ActiveOrderBanner)
     // ==========================================
+    function getCurrentTableActiveOrder() {
+      return store.activeOrder && store.activeOrder.tableId === store.currentTable.id
+        ? store.activeOrder
+        : null;
+    }
+
     function renderActiveOrderBanner() {
       const banner = document.getElementById("active-order-banner");
       if (!banner) return;
 
-      if (!store.activeOrder || store.activeOrder.status === 'pagado') {
+      const activeOrder = getCurrentTableActiveOrder();
+      if (!activeOrder || activeOrder.status === 'pagado') {
         banner.classList.add("hidden");
         return;
       }
 
       banner.classList.remove("hidden");
-      document.getElementById("order-banner-ticket").textContent = store.activeOrder.id;
-      document.getElementById("order-banner-items-count").textContent = `(${store.activeOrder.items.length} platos • ${store.activeOrder.total} Bs)`;
+      document.getElementById("order-banner-ticket").textContent = activeOrder.id;
+      document.getElementById("order-banner-items-count").textContent = `(${activeOrder.items.length} platos • ${activeOrder.total} Bs)`;
 
       const statusMap = {
         "pendiente": { label: "1. Pendiente", icon: "⏳", desc: "Comanda recibida en cocina." },
@@ -1621,7 +1628,7 @@
         "por-pagar": { label: "4. Por Pagar", icon: "💳", desc: "Cuenta solicitada a caja." }
       };
 
-      const info = statusMap[store.activeOrder.status] || statusMap["en-fogones"];
+      const info = statusMap[activeOrder.status] || statusMap["en-fogones"];
       document.getElementById("order-status-icon").textContent = info.icon;
       document.getElementById("order-banner-status-badge").textContent = info.label;
       document.getElementById("order-banner-desc").textContent = info.desc;
@@ -1630,9 +1637,9 @@
       [1, 2, 3, 4].forEach(stepNum => {
         const el = document.getElementById(`step-${stepNum}`);
         if (!el) return;
-        const currentNum = store.activeOrder.status === 'pendiente' ? 1 :
-                           store.activeOrder.status === 'en-fogones' ? 2 :
-                           store.activeOrder.status === 'servido' ? 3 : 4;
+        const currentNum = activeOrder.status === 'pendiente' ? 1 :
+                           activeOrder.status === 'en-fogones' ? 2 :
+                           activeOrder.status === 'servido' ? 3 : 4;
         if (stepNum <= currentNum) {
           el.className = "px-2 py-1 rounded-lg bg-amber-500/30 text-amber-300 border border-amber-500/40";
         } else {
@@ -1676,8 +1683,9 @@
 
     function openBillModal() {
       triggerHaptic(15);
+      const activeOrder = getCurrentTableActiveOrder();
       document.getElementById("bill-mesa-label").textContent = store.currentTable.name;
-      document.getElementById("bill-total-amount").textContent = store.activeOrder ? store.activeOrder.total : "0";
+      document.getElementById("bill-total-amount").textContent = activeOrder ? activeOrder.total : "0";
       calculateChange(document.getElementById("cash-input-amount").value);
       const modal = document.getElementById("bill-modal");
       modal.classList.remove("opacity-0", "pointer-events-none");
@@ -1710,7 +1718,8 @@
     }
 
     function calculateChange(val) {
-      const total = store.activeOrder ? store.activeOrder.total : 0;
+      const activeOrder = getCurrentTableActiveOrder();
+      const total = activeOrder ? activeOrder.total : 0;
       const amount = parseFloat(val) || 0;
       const change = amount - total;
       const display = document.getElementById("cash-change-display");
@@ -1727,7 +1736,8 @@
 
     function confirmBillRequest() {
       triggerHaptic(30);
-      const total = store.activeOrder ? store.activeOrder.total : 0;
+      const activeOrder = getCurrentTableActiveOrder();
+      const total = activeOrder ? activeOrder.total : 0;
       const cashGiven = document.getElementById("cash-input-amount").value;
       const change = (parseFloat(cashGiven) || total) - total;
 
@@ -1745,8 +1755,8 @@
         details: details
       });
 
-      if (store.activeOrder) {
-        store.activeOrder.status = "por-pagar";
+      if (activeOrder) {
+        activeOrder.status = "por-pagar";
       }
 
       // Actualizar estado de la mesa en el mapa
@@ -2721,7 +2731,8 @@
       const customerName = document.getElementById("input-customer-name").value.trim() || "Cliente Río Chico";
       const notes = document.getElementById("input-general-notes").value.trim();
       const totalPrice = items.reduce((s, i) => s + (i.dish.precio * i.qty), 0);
-      const isAddition = store.activeOrder && store.activeOrder.status !== 'pagado';
+      const currentActiveOrder = getCurrentTableActiveOrder();
+      const isAddition = Boolean(store.orderMode === 'table' && currentActiveOrder && currentActiveOrder.status !== 'pagado');
 
       // 1. Enviar a Cocina KDS
       store.comandas.unshift({
@@ -2742,8 +2753,11 @@
         tableName: store.currentTable.name,
         status: "en-fogones",
         time: "1 min",
-        total: (store.activeOrder && isAddition ? store.activeOrder.total : 0) + totalPrice,
-        items: items.map(i => ({ nombre: i.dish.nombre, qty: i.qty, precio: i.dish.precio, nota: i.note }))
+        total: (isAddition ? currentActiveOrder.total : 0) + totalPrice,
+        items: [
+          ...(isAddition ? currentActiveOrder.items : []),
+          ...items.map(i => ({ nombre: i.dish.nombre, qty: i.qty, precio: i.dish.precio, nota: i.note }))
+        ]
       };
 
       // 3. Actualizar Estado de la Mesa a Ocupada
@@ -2754,6 +2768,17 @@
         m.total = store.activeOrder.total;
         m.mozo = customerName || 'Cliente Río Chico';
         m.time = '1 min';
+      } else if (store.orderMode === 'table') {
+        const newTable = {
+          ...store.currentTable,
+          status: "ocupada",
+          activeTicket: store.ticketId,
+          mozo: customerName,
+          time: "1 min",
+          total: store.activeOrder.total
+        };
+        store.mesas.push(newTable);
+        store.currentTable = newTable;
       }
       if (store.orderMode === 'table') {
         store.currentTable.status = 'ocupada';
