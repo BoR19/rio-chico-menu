@@ -6,8 +6,7 @@ import {
   FlatList,
   TouchableOpacity,
   SafeAreaView,
-  Platform,
-  Alert
+  Platform
 } from 'react-native';
 import * as Haptics from 'expo-haptics';
 

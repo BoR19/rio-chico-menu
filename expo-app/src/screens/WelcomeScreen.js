@@ -20,8 +20,7 @@ export default function WelcomeScreen({ onEnterMenu }) {
   const slideAnim = useRef(new Animated.Value(30)).current;
 
   useEffect(() => {
-    // Ken Burns subtle zoom loop
-    Animated.loop(
+    const kenBurnsAnimation = Animated.loop(
       Animated.sequence([
         Animated.timing(scaleAnim, {
           toValue: 1.14,
@@ -34,10 +33,9 @@ export default function WelcomeScreen({ onEnterMenu }) {
           useNativeDriver: true
         })
       ])
-    ).start();
+    );
 
-    // Entry staggered animations
-    Animated.parallel([
+    const entranceAnimation = Animated.parallel([
       Animated.timing(fadeAnim, {
         toValue: 1,
         duration: 900,
@@ -48,7 +46,14 @@ export default function WelcomeScreen({ onEnterMenu }) {
         duration: 800,
         useNativeDriver: true
       })
-    ]).start();
+    ]);
+
+    kenBurnsAnimation.start();
+    entranceAnimation.start();
+    return () => {
+      kenBurnsAnimation.stop();
+      entranceAnimation.stop();
+    };
   }, []);
 
   const handlePress = () => {

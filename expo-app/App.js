@@ -12,6 +12,7 @@ export default function App() {
   const [inApp, setInApp] = useState(false);
   const [activeTab, setActiveTab] = useState('menu'); // 'menu' | 'mesas' | 'cocina' | 'admin'
 
+  // TODO: Connect these separately managed screens to shared order/mesa persistence.
   if (!inApp) {
     return (
       <View style={styles.container}>
@@ -27,10 +28,18 @@ export default function App() {
       
       {/* Screen Render */}
       <View style={styles.content}>
-        {activeTab === 'menu' && <MenuScreen onGoHome={() => setInApp(false)} />}
-        {activeTab === 'mesas' && <MesasScreen />}
-        {activeTab === 'cocina' && <CocinaScreen />}
-        {activeTab === 'admin' && <AdminScreen />}
+        <View style={[styles.screen, activeTab !== 'menu' && styles.hiddenScreen]}>
+          <MenuScreen onGoHome={() => setInApp(false)} />
+        </View>
+        <View style={[styles.screen, activeTab !== 'mesas' && styles.hiddenScreen]}>
+          <MesasScreen />
+        </View>
+        <View style={[styles.screen, activeTab !== 'cocina' && styles.hiddenScreen]}>
+          <CocinaScreen />
+        </View>
+        <View style={[styles.screen, activeTab !== 'admin' && styles.hiddenScreen]}>
+          <AdminScreen />
+        </View>
       </View>
 
       {/* Bottom Tab Bar (Matching Screenshot Reference) */}
@@ -49,5 +58,11 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1
+  },
+  screen: {
+    flex: 1
+  },
+  hiddenScreen: {
+    display: 'none'
   }
 });

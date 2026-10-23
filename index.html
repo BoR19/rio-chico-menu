@@ -744,6 +744,24 @@
 
   </div>
 
+  <button
+    id="floating-cart"
+    type="button"
+    onclick="openOrderModal()"
+    class="fixed bottom-20 left-4 right-4 z-30 mx-auto flex max-w-md items-center justify-between rounded-2xl border border-amber-500/40 bg-stone-950/95 px-4 py-3 text-left shadow-2xl transition-all duration-300 translate-y-36 opacity-0 pointer-events-none"
+    aria-label="Revisar pedido"
+  >
+    <span class="flex items-center gap-3">
+      <span class="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-orange-600 to-red-600 text-lg">🛍️</span>
+      <span>
+        <span class="block text-[10px] font-extrabold tracking-wide text-amber-400">TU PEDIDO ACTUAL</span>
+        <span class="block text-sm font-black text-white"><span id="cart-total-price">0</span> Bs</span>
+      </span>
+    </span>
+    <span class="flex items-center gap-2 rounded-xl bg-amber-600 px-3 py-2 text-xs font-bold text-white">
+      Revisar <span id="cart-badge-count" class="rounded-full bg-white px-1.5 py-0.5 text-[10px] text-stone-950">0</span>
+    </span>
+  </button>
 
   <!-- =============================================================== -->
   <!-- BARRA DE NAVEGACIÓN ADAPTATIVA (MobileDock)                     -->
@@ -1151,6 +1169,11 @@
             <input id="input-customer-name" type="text" placeholder="Ej. Juan Pérez" class="w-full px-3.5 py-2 rounded-xl bg-stone-900 border border-stone-700 text-sm text-white focus:outline-none focus:border-amber-500" />
           </div>
 
+          <div id="takeaway-address-group" class="hidden">
+            <label class="block text-xs text-stone-400 mb-1">Dirección de entrega:</label>
+            <input id="input-takeaway-address" type="text" placeholder="Barrio, calle y referencia" class="w-full px-3.5 py-2 rounded-xl bg-stone-900 border border-stone-700 text-sm text-white focus:outline-none focus:border-amber-500" />
+          </div>
+
           <div>
             <label class="block text-xs text-stone-400 mb-1">Instrucciones Especiales para Cocina:</label>
             <input id="input-general-notes" type="text" placeholder="Ej. Servir sopas de entrada por favor" class="w-full px-3.5 py-2 rounded-xl bg-stone-900 border border-stone-700 text-sm text-white focus:outline-none focus:border-amber-500" />
@@ -1207,6 +1230,21 @@
     const CSV_URL = "https://docs.google.com/spreadsheets/d/1Kbk5U4fPVOYhcrNEOE9tBPQxR-hWZ1VcBoq-iwHQzX4/export?format=csv&gid=0";
 
     // ESTADO GLOBAL INTEGRAL (ESPECIFICACIÓN EL CHURO MOSITO)
+    function loadStaffSession() {
+      try {
+        const raw = localStorage.getItem("riochico_staff_session");
+        if (!raw) return { role: null, user: null };
+        const session = JSON.parse(raw);
+        const validRole = ["admin", "mozo", "cajero"].includes(session?.role);
+        if (validRole && typeof session.user === "string") return session;
+        console.warn("Sesión de personal guardada no válida; se iniciará como cliente.");
+      } catch (error) {
+        console.warn("No se pudo leer la sesión de personal; se iniciará como cliente.", error);
+      }
+      return { role: null, user: null };
+    }
+
+    // TODO: Persist mesas and comandas in a shared backend for cross-device kitchen updates.
     const store = {
       // 1. Identidad y Configuración de Marca (Colección configuracion/perfil)
       config: {
@@ -1219,7 +1257,7 @@
       },
 
       // 2. Sesión de Personal (Roles Mozo, Cajero, Admin vía PIN)
-      staffSession: JSON.parse(localStorage.getItem("riochico_staff_session") || '{"role":null,"user":null}'),
+      staffSession: loadStaffSession(),
       currentPinBuffer: "",
 
       // 3. Mesa Actual del Comensal (Detectada por URL ?mesa=X o default)
@@ -1737,6 +1775,11 @@
     function confirmBillRequest() {
       triggerHaptic(30);
       const activeOrder = getCurrentTableActiveOrder();
+      if (!activeOrder) {
+        alert("Esta mesa todavía no tiene una comanda activa.");
+        closeBillModal();
+        return;
+      }
       const total = activeOrder ? activeOrder.total : 0;
       const cashGiven = document.getElementById("cash-input-amount").value;
       const change = (parseFloat(cashGiven) || total) - total;
@@ -2411,7 +2454,9 @@
             renderDishes();
             updateSyncStatus("Caché activo", "emerald");
           }
-        } catch(e) {}
+        } catch (error) {
+          console.warn("No se pudo leer el menú guardado; se usará el menú de respaldo.", error);
+        }
       }
 
       if (store.dishes.length === 0) {
@@ -2445,7 +2490,11 @@
 
             if (parsedList.length > 0) {
               store.dishes = parsedList;
-              localStorage.setItem(CACHE_KEY, JSON.stringify(parsedList));
+              try {
+                localStorage.setItem(CACHE_KEY, JSON.stringify(parsedList));
+              } catch (error) {
+                console.warn("No se pudo guardar el menú en caché local.", error);
+              }
               extractCategories();
               renderCategoriesBar();
               renderDishes();
@@ -2516,9 +2565,9 @@
       const filtered = store.dishes.filter(dish => {
         const matchesCategory = store.activeCategory === "Todos" || dish.categoria === store.activeCategory;
         const matchesSearch = !store.searchQuery ||
-          dish.nombre.toLowerCase().includes(store.searchQuery) ||
-          dish.descripcion.toLowerCase().includes(store.searchQuery) ||
-          dish.categoria.toLowerCase().includes(store.searchQuery);
+          (dish.nombre || "").toLowerCase().includes(store.searchQuery) ||
+          (dish.descripcion || "").toLowerCase().includes(store.searchQuery) ||
+          (dish.categoria || "").toLowerCase().includes(store.searchQuery);
         return matchesCategory && matchesSearch;
       });
 
@@ -2720,6 +2769,7 @@
       store.orderMode = mode;
       document.getElementById("btn-mode-table").className = mode === 'table' ? "py-2.5 px-3 rounded-xl border text-xs font-semibold flex items-center justify-center gap-1.5 bg-amber-500/20 border-amber-500 text-amber-300 shadow-sm" : "py-2.5 px-3 rounded-xl border border-stone-800 text-xs font-semibold flex items-center justify-center gap-1.5 bg-stone-900 text-stone-400";
       document.getElementById("btn-mode-takeaway").className = mode === 'takeaway' ? "py-2.5 px-3 rounded-xl border text-xs font-semibold flex items-center justify-center gap-1.5 bg-amber-500/20 border-amber-500 text-amber-300 shadow-sm" : "py-2.5 px-3 rounded-xl border border-stone-800 text-xs font-semibold flex items-center justify-center gap-1.5 bg-stone-900 text-stone-400";
+      document.getElementById("takeaway-address-group").classList.toggle("hidden", mode !== 'takeaway');
     }
 
     // ENVÍO DE COMANDA A COCINA KDS Y WHATSAPP
@@ -2730,15 +2780,22 @@
 
       const customerName = document.getElementById("input-customer-name").value.trim() || "Cliente Río Chico";
       const notes = document.getElementById("input-general-notes").value.trim();
+      const takeawayAddress = document.getElementById("input-takeaway-address").value.trim();
+      if (store.orderMode === 'takeaway' && !takeawayAddress) {
+        alert("Ingresa la dirección de entrega.");
+        return;
+      }
       const totalPrice = items.reduce((s, i) => s + (i.dish.precio * i.qty), 0);
       const currentActiveOrder = getCurrentTableActiveOrder();
-      const isAddition = Boolean(store.orderMode === 'table' && currentActiveOrder && currentActiveOrder.status !== 'pagado');
+      const isTableOrder = store.orderMode === 'table';
+      const isAddition = Boolean(isTableOrder && currentActiveOrder && currentActiveOrder.status !== 'pagado');
 
       // 1. Enviar a Cocina KDS
       store.comandas.unshift({
         id: `cmd_${Date.now()}`,
         ticket: store.ticketId,
-        mesa: store.orderMode === 'table' ? store.currentTable.name : 'Para Llevar',
+        mesa: isTableOrder ? store.currentTable.name : 'Para Llevar',
+        tableId: isTableOrder ? store.currentTable.id : null,
         mozo: customerName,
         tiempo: "1 min",
         status: "pendiente",
@@ -2749,8 +2806,8 @@
       // 2. Actualizar Comanda Activa de la Mesa
       store.activeOrder = {
         id: store.ticketId,
-        tableId: store.currentTable.id,
-        tableName: store.currentTable.name,
+        tableId: isTableOrder ? store.currentTable.id : null,
+        tableName: isTableOrder ? store.currentTable.name : 'Para Llevar',
         status: "en-fogones",
         time: "1 min",
         total: (isAddition ? currentActiveOrder.total : 0) + totalPrice,
@@ -2761,32 +2818,33 @@
       };
 
       // 3. Actualizar Estado de la Mesa a Ocupada
-      const m = store.mesas.find(x => x.id === store.currentTable.id);
-      if (m) {
-        m.status = "ocupada";
-        m.activeTicket = store.ticketId;
-        m.total = store.activeOrder.total;
-        m.mozo = customerName || 'Cliente Río Chico';
-        m.time = '1 min';
-      } else if (store.orderMode === 'table') {
-        const newTable = {
-          ...store.currentTable,
-          status: "ocupada",
-          activeTicket: store.ticketId,
-          mozo: customerName,
-          time: "1 min",
-          total: store.activeOrder.total
-        };
-        store.mesas.push(newTable);
-        store.currentTable = newTable;
-      }
-      if (store.orderMode === 'table') {
+      if (isTableOrder) {
+        const m = store.mesas.find(x => x.id === store.currentTable.id);
+        if (m) {
+          m.status = "ocupada";
+          m.activeTicket = store.ticketId;
+          m.total = store.activeOrder.total;
+          m.mozo = customerName;
+          m.time = '1 min';
+        } else {
+          const newTable = {
+            ...store.currentTable,
+            status: "ocupada",
+            activeTicket: store.ticketId,
+            mozo: customerName,
+            time: "1 min",
+            total: store.activeOrder.total
+          };
+          store.mesas.push(newTable);
+          store.currentTable = newTable;
+        }
         store.currentTable.status = 'ocupada';
       }
 
       // 4. Formatear WhatsApp
       const itemsText = items.map(i => `• ${i.qty}x ${i.dish.nombre} (${i.dish.precio * i.qty} Bs)${i.note ? `\n  ↳ _Nota: ${i.note}_` : ''}`).join("\n");
-      const msg = `🍽️ *COMANDA RESTAURANTE RÍO CHICO* 🍽️\n🏷️ *Ticket:* ${store.ticketId}${isAddition ? ' _[ADICIÓN A LA MESA]_' : ''}\n👤 *Cliente:* ${customerName}\n📍 *Ubicación:* ${store.currentTable.name}\n----------------------------------------\n${itemsText}\n• 1x Ensaladas de cortesía 🥗\n----------------------------------------\n💰 *Total:* ${totalPrice} Bs\n${notes ? `📝 *Nota:* ${notes}\n` : ''}\n⚠️ Modificaciones con ticket *${store.ticketId}* en 10 min.`;
+      const orderLocation = isTableOrder ? store.currentTable.name : `Para Llevar / Delivery: ${takeawayAddress}`;
+      const msg = `🍽️ *COMANDA RESTAURANTE RÍO CHICO* 🍽️\n🏷️ *Ticket:* ${store.ticketId}${isAddition ? ' _[ADICIÓN A LA MESA]_' : ''}\n👤 *Cliente:* ${customerName}\n📍 *Ubicación:* ${orderLocation}\n----------------------------------------\n${itemsText}\n• 1x Ensaladas de cortesía 🥗\n----------------------------------------\n💰 *Total:* ${totalPrice} Bs\n${notes ? `📝 *Nota:* ${notes}\n` : ''}\n⚠️ Modificaciones con ticket *${store.ticketId}* en 10 min.`;
       
       window.open(`https://wa.me/${store.config.telefono.replace(/[^0-9]/g, '')}?text=${encodeURIComponent(msg)}`, "_blank");
 

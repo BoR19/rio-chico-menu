@@ -11,9 +11,8 @@ import {
   Platform,
   Alert
 } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
-import { buildWhatsAppMessage } from '../services/menuService';
+import { buildWhatsAppMessage, calculateOrderTotal } from '../services/menuService';
 import { WHATSAPP_PHONE } from '../constants/fallbackData';
 
 export default function OrderSheetModal({
@@ -31,18 +30,25 @@ export default function OrderSheetModal({
   const [address, setAddress] = useState('');
   const [customerName, setCustomerName] = useState('');
   const [notes, setNotes] = useState('');
+  const [isSending, setIsSending] = useState(false);
 
   const items = Object.values(cart);
-  const totalPrice = items.reduce((sum, item) => sum + (item.dish.precio * item.qty), 0);
+  const totalPrice = calculateOrderTotal(items);
 
   const handleSendWhatsApp = async () => {
+    if (isSending) return;
     if (items.length === 0) {
       Alert.alert('Aviso', 'Tu pedido está vacío. Elige al menos un plato.');
       return;
     }
 
-    if (Platform.OS !== 'web') {
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    if (orderMode === 'table' && !tableNumber.trim()) {
+      Alert.alert('Aviso', 'Ingresa el número de mesa.');
+      return;
+    }
+    if (orderMode === 'takeaway' && !address.trim()) {
+      Alert.alert('Aviso', 'Ingresa la dirección de entrega.');
+      return;
     }
 
     const message = buildWhatsAppMessage({
@@ -54,22 +60,20 @@ export default function OrderSheetModal({
       notes,
       ticketId
     });
-
     const url = `https://wa.me/${WHATSAPP_PHONE}?text=${encodeURIComponent(message)}`;
-    
+    setIsSending(true);
     try {
-      const supported = await Linking.canOpenURL(url);
-      if (supported || Platform.OS === 'web') {
-        await Linking.openURL(url);
-      } else {
-        Alert.alert('Error', 'No se pudo abrir WhatsApp en este dispositivo.');
+      await Linking.openURL(url);
+      if (Platform.OS !== 'web') {
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       }
+      onOrderSent();
     } catch (err) {
       console.warn('Linking error:', err);
-      Linking.openURL(url);
+      Alert.alert('Error', 'No se pudo abrir WhatsApp. Tu pedido sigue en pantalla; intenta nuevamente.');
+    } finally {
+      setIsSending(false);
     }
-
-    onOrderSent();
   };
 
   return (
@@ -249,11 +253,12 @@ export default function OrderSheetModal({
           <View style={styles.footer}>
             <TouchableOpacity
               onPress={handleSendWhatsApp}
+              disabled={isSending}
               activeOpacity={0.88}
-              style={styles.btnSend}
+              style={[styles.btnSend, isSending && styles.btnSendDisabled]}
             >
-              <Text style={styles.btnSendIcon}>💬</Text>
-              <Text style={styles.btnSendText}>Confirmar y Enviar por WhatsApp</Text>
+              <Text style={styles.btnSendIcon}>{isSending ? '⏳' : '💬'}</Text>
+              <Text style={styles.btnSendText}>{isSending ? 'Abriendo WhatsApp...' : 'Confirmar y Enviar por WhatsApp'}</Text>
             </TouchableOpacity>
           </View>
 
@@ -544,6 +549,9 @@ const styles = StyleSheet.create({
     backgroundColor: '#059669',
     paddingVertical: 14,
     borderRadius: 16
+  },
+  btnSendDisabled: {
+    opacity: 0.7
   },
   btnSendIcon: {
     fontSize: 18,

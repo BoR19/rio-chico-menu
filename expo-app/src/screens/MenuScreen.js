@@ -8,6 +8,7 @@ import {
   TouchableOpacity,
   ScrollView,
   Image,
+  Modal,
   SafeAreaView,
   Platform,
   Alert
@@ -17,7 +18,7 @@ import DishCard from '../components/DishCard';
 import CartFloatingBar from '../components/CartFloatingBar';
 import OrderSheetModal from '../components/OrderSheetModal';
 import AiAssistantModal from '../components/AiAssistantModal';
-import { loadCachedMenu, fetchLiveMenu, generateTicketId } from '../services/menuService';
+import { calculateOrderTotal, loadCachedMenu, fetchLiveMenu, generateTicketId } from '../services/menuService';
 
 export default function MenuScreen({ onGoHome }) {
   const [dishes, setDishes] = useState([]);
@@ -26,6 +27,8 @@ export default function MenuScreen({ onGoHome }) {
   const [searchQuery, setSearchQuery] = useState('');
   const [cart, setCart] = useState({});
   const [ticketId, setTicketId] = useState(generateTicketId());
+  const [noteEditorDish, setNoteEditorDish] = useState(null);
+  const [noteDraft, setNoteDraft] = useState('');
   
   // Modals
   const [orderModalVisible, setOrderModalVisible] = useState(false);
@@ -34,15 +37,19 @@ export default function MenuScreen({ onGoHome }) {
   const [syncStatus, setSyncStatus] = useState('Iniciando...');
 
   useEffect(() => {
-    // 1. Initial boot from local cache
-    loadCachedMenu().then(cached => {
+    let isActive = true;
+    const initializeMenu = async () => {
+      const cached = await loadCachedMenu();
+      if (!isActive) return;
       setDishes(cached);
       updateCategories(cached);
       setSyncStatus('Caché activo');
-    });
-
-    // 2. Background revalidation from Google Sheets
-    handleSync();
+      await handleSync(() => isActive);
+    };
+    initializeMenu();
+    return () => {
+      isActive = false;
+    };
   }, []);
 
   const updateCategories = (list) => {
@@ -53,14 +60,26 @@ export default function MenuScreen({ onGoHome }) {
     setCategories(['Todos', ...Array.from(set)]);
   };
 
-  const handleSync = async () => {
+  const handleSync = async (isActive = () => true) => {
     setIsSyncing(true);
     setSyncStatus('Sincronizando...');
-    const result = await fetchLiveMenu();
-    setDishes(result.data);
-    updateCategories(result.data);
-    setIsSyncing(false);
-    setSyncStatus(result.source === 'sheet' ? 'En vivo (Sheets)' : 'Respaldo local');
+    try {
+      const result = await fetchLiveMenu();
+      if (!isActive()) return;
+      setDishes(result.data);
+      updateCategories(result.data);
+      const status = result.source === 'sheet'
+        ? 'En vivo (Sheets)'
+        : result.source === 'cache'
+          ? 'Caché activo'
+          : 'Respaldo local';
+      setSyncStatus(status);
+    } catch (error) {
+      console.error('Error al sincronizar el menú:', error);
+      if (isActive()) setSyncStatus('No se pudo sincronizar');
+    } finally {
+      if (isActive()) setIsSyncing(false);
+    }
   };
 
   const handleAddToCart = (dish) => {
@@ -96,6 +115,19 @@ export default function MenuScreen({ onGoHome }) {
     });
   };
 
+  const saveDishNote = (dish, note) => {
+    setCart(prev => {
+      const current = prev[dish.id] || { dish, qty: 1, note: '' };
+      return {
+        ...prev,
+        [dish.id]: {
+          ...current,
+          note: note || ''
+        }
+      };
+    });
+  };
+
   const handleNotePress = (dish) => {
     if (Platform.OS === 'ios') {
       Alert.prompt(
@@ -105,38 +137,20 @@ export default function MenuScreen({ onGoHome }) {
           { text: 'Cancelar', style: 'cancel' },
           {
             text: 'Guardar',
-            onPress: (text) => {
-              setCart(prev => {
-                const current = prev[dish.id] || { dish, qty: 1, note: '' };
-                return {
-                  ...prev,
-                  [dish.id]: {
-                    ...current,
-                    note: text || ''
-                  }
-                };
-              });
-            }
+            onPress: text => saveDishNote(dish, text)
           }
         ],
         'plain-text',
         cart[dish.id]?.note || ''
       );
+    } else if (Platform.OS === 'android') {
+      setNoteDraft(cart[dish.id]?.note || '');
+      setNoteEditorDish(dish);
     } else {
-      // Android / Web simple prompt fallback
       const currentNote = cart[dish.id]?.note || '';
-      const newNote = prompt(`Nota para ${dish.nombre}:`, currentNote);
+      const newNote = window.prompt(`Nota para ${dish.nombre}:`, currentNote);
       if (newNote !== null) {
-        setCart(prev => {
-          const current = prev[dish.id] || { dish, qty: 1, note: '' };
-          return {
-            ...prev,
-            [dish.id]: {
-              ...current,
-              note: newNote
-            }
-          };
-        });
+        saveDishNote(dish, newNote);
       }
     }
   };
@@ -151,14 +165,14 @@ export default function MenuScreen({ onGoHome }) {
   const filteredDishes = dishes.filter(d => {
     const matchesCat = activeCategory === 'Todos' || d.categoria === activeCategory;
     const matchesSearch = !searchQuery ||
-      d.nombre.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      d.descripcion.toLowerCase().includes(searchQuery.toLowerCase());
+      (d.nombre || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (d.descripcion || '').toLowerCase().includes(searchQuery.toLowerCase());
     return matchesCat && matchesSearch;
   });
 
   const cartItems = Object.values(cart);
   const totalQty = cartItems.reduce((sum, i) => sum + i.qty, 0);
-  const totalPrice = cartItems.reduce((sum, i) => sum + (i.dish.precio * i.qty), 0);
+  const totalPrice = calculateOrderTotal(cartItems);
 
   return (
     <SafeAreaView style={styles.container}>
@@ -295,6 +309,7 @@ export default function MenuScreen({ onGoHome }) {
         onRemove={handleRemoveFromCart}
         onClear={() => setCart({})}
         onOrderSent={() => {
+          setCart({});
           setTicketId(generateTicketId());
           setOrderModalVisible(false);
         }}
@@ -306,6 +321,42 @@ export default function MenuScreen({ onGoHome }) {
         onClose={() => setAiModalVisible(false)}
         onAddDishById={handleAddDishById}
       />
+
+      <Modal
+        visible={Boolean(noteEditorDish)}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setNoteEditorDish(null)}
+      >
+        <View style={styles.noteModalBackdrop}>
+          <View style={styles.noteModal}>
+            <Text style={styles.noteModalTitle}>Nota para {noteEditorDish?.nombre}</Text>
+            <Text style={styles.noteModalDescription}>Especifica indicaciones para cocina.</Text>
+            <TextInput
+              value={noteDraft}
+              onChangeText={setNoteDraft}
+              placeholder="Ej. Sin vinagre, bien crocante..."
+              placeholderTextColor="#64748b"
+              maxLength={100}
+              style={styles.noteModalInput}
+            />
+            <View style={styles.noteModalActions}>
+              <TouchableOpacity onPress={() => setNoteEditorDish(null)} style={styles.noteModalCancel}>
+                <Text style={styles.noteModalCancelText}>Cancelar</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={() => {
+                  saveDishNote(noteEditorDish, noteDraft);
+                  setNoteEditorDish(null);
+                }}
+                style={styles.noteModalSave}
+              >
+                <Text style={styles.noteModalSaveText}>Guardar</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -473,5 +524,62 @@ const styles = StyleSheet.create({
   listContent: {
     paddingHorizontal: 16,
     paddingBottom: 100
+  },
+  noteModalBackdrop: {
+    flex: 1,
+    justifyContent: 'center',
+    padding: 20,
+    backgroundColor: 'rgba(2, 6, 23, 0.85)'
+  },
+  noteModal: {
+    padding: 18,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: 'rgba(245, 158, 11, 0.35)',
+    backgroundColor: '#0f172a'
+  },
+  noteModalTitle: {
+    color: '#ffffff',
+    fontSize: 16,
+    fontWeight: '800'
+  },
+  noteModalDescription: {
+    color: '#94a3b8',
+    fontSize: 12,
+    marginTop: 5,
+    marginBottom: 12
+  },
+  noteModalInput: {
+    minHeight: 44,
+    paddingHorizontal: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#334155',
+    color: '#ffffff',
+    backgroundColor: '#020617'
+  },
+  noteModalActions: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    gap: 10,
+    marginTop: 14
+  },
+  noteModalCancel: {
+    paddingVertical: 9,
+    paddingHorizontal: 12
+  },
+  noteModalCancelText: {
+    color: '#94a3b8',
+    fontWeight: '700'
+  },
+  noteModalSave: {
+    paddingVertical: 9,
+    paddingHorizontal: 16,
+    borderRadius: 10,
+    backgroundColor: '#d97706'
+  },
+  noteModalSaveText: {
+    color: '#ffffff',
+    fontWeight: '800'
   }
 });

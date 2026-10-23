@@ -1,6 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Papa from 'papaparse';
-import { CACHE_KEY, CSV_URL, fallbackDishes, WHATSAPP_PHONE } from '../constants/fallbackData';
+import { CACHE_KEY, CSV_URL, fallbackDishes } from '../constants/fallbackData';
 
 export function parsePrice(val) {
   if (!val) return 0;
@@ -13,6 +13,10 @@ export function parsePrice(val) {
 export function generateTicketId() {
   const rand = Math.floor(1000 + Math.random() * 9000);
   return `#RC-${rand}`;
+}
+
+export function calculateOrderTotal(items) {
+  return items.reduce((total, item) => total + (item.dish.precio * item.qty), 0);
 }
 
 export async function loadCachedMenu() {
@@ -32,6 +36,11 @@ export async function loadCachedMenu() {
 
 export async function fetchLiveMenu() {
   return new Promise((resolve) => {
+    const resolveWithCachedMenu = async () => {
+      const data = await loadCachedMenu();
+      resolve({ data, source: data === fallbackDishes ? 'fallback' : 'cache' });
+    };
+
     Papa.parse(CSV_URL, {
       download: true,
       header: true,
@@ -58,18 +67,18 @@ export async function fetchLiveMenu() {
             return resolve({ data: parsed, source: 'sheet' });
           }
         }
-        resolve({ data: fallbackDishes, source: 'fallback' });
+        resolveWithCachedMenu();
       },
       error: (err) => {
         console.error('PapaParse error:', err);
-        resolve({ data: fallbackDishes, source: 'fallback' });
+        resolveWithCachedMenu();
       }
     });
   });
 }
 
 export function buildWhatsAppMessage({ items, orderMode, tableNumber, address, customerName, notes, ticketId }) {
-  const totalPrice = items.reduce((sum, item) => sum + (item.dish.precio * item.qty), 0);
+  const totalPrice = calculateOrderTotal(items);
   const now = new Date();
   const formattedDate = `${now.getDate()}/${now.getMonth() + 1}/${now.getFullYear()}, ${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
 

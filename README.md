@@ -34,6 +34,10 @@ Aplicación móvil y catálogo digital interactivo de alta fidelidad con diseño
    - **Sincronización:** Conexión vía PapaParse con la hoja de Google Sheets en vivo (`https://docs.google.com/spreadsheets/d/1Kbk5U4fPVOYhcrNEOE9tBPQxR-hWZ1VcBoq-iwHQzX4/export?format=csv&gid=0`).
    - **Respaldo Local (Fallback Data):** Menú completo offline con los 48 platos y bebidas tradicionales de Tarija en caso de fallo de red.
 
+### ⚠️ Limitación de sincronización de pedidos
+
+La versión web mantiene mesas y comandas en memoria del navegador; la app Expo mantiene estados separados en cada pantalla. No hay un backend compartido, por lo que los pedidos enviados desde Expo abren WhatsApp pero no aparecen automáticamente en el KDS web ni se sincronizan entre dispositivos. Para operar la cocina en varios dispositivos hace falta conectar ambas versiones a un servicio de pedidos compartido.
+
 ---
 
 ## 🚀 Cómo Ejecutar la Aplicación
