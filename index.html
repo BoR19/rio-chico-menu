@@ -1394,11 +1394,22 @@
     }
 
     async function restoreGuestOrder(user) {
-      const activeOrder = getCurrentTableActiveOrder();
-      if (!activeOrder || activeOrder.customerUid !== user.uid) return;
       try {
-        const snapshot = await firebaseDb.collection("orders").doc(activeOrder.firestoreId).get();
-        if (!snapshot.exists || snapshot.data().status === "pagado" || snapshot.data().kdsArchived === true) {
+        const localOrder = getCurrentTableActiveOrder();
+        const ordersSnapshot = await firebaseDb.collection("orders")
+          .where("customerUid", "==", user.uid)
+          .get();
+        const activeOrderSnapshot = ordersSnapshot.docs
+          .filter(doc => {
+            const order = doc.data();
+            return order.mode === "table" &&
+              order.tableId === store.currentTable.id &&
+              order.status !== "pagado" &&
+              order.kdsArchived !== true;
+          })
+          .sort((a, b) => (b.data().createdAt?.seconds || 0) - (a.data().createdAt?.seconds || 0))[0];
+
+        if (!activeOrderSnapshot) {
           localStorage.removeItem(getLocalOrderStorageKey(store.currentTable.id));
           store.activeOrder = null;
           store.cart = {};
@@ -1409,15 +1420,36 @@
           return;
         }
 
-        const order = snapshot.data();
+        const order = activeOrderSnapshot.data();
+        const hasMatchingLocalCart = localOrder &&
+          localOrder.customerUid === user.uid &&
+          localOrder.firestoreId === activeOrderSnapshot.id &&
+          localOrder.cart;
         store.activeOrder = {
-          ...activeOrder,
+          ...order,
           id: order.ticket,
+          firestoreId: activeOrderSnapshot.id,
+          tableId: order.tableId,
+          tableName: order.tableName,
           status: order.status,
           total: order.total,
           items: order.items
         };
         store.ticketId = order.ticket;
+        if (hasMatchingLocalCart) {
+          store.cart = localOrder.cart;
+        } else {
+          store.cart = Object.fromEntries((order.items || []).map(item => {
+            const dish = store.dishes.find(menuDish => menuDish.id === item.dishId) || {
+              id: item.dishId,
+              nombre: item.nombre,
+              precio: item.precio,
+              categoria: "Otros",
+              descripcion: ""
+            };
+            return [item.dishId, { dish, qty: item.qty, note: item.nota || "" }];
+          }));
+        }
         persistLocalActiveOrder();
         updateCartUI();
         renderDishes();
