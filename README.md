@@ -20,11 +20,11 @@ Aplicación móvil y catálogo digital interactivo de alta fidelidad con diseño
    - **Buscador en tiempo real:** Filtra al instante platos por nombre, ingredientes o descripción.
    - **Bento Grid de Platos:** Tarjetas elegantes con lazy loading (`loading="lazy"`), indicación de precio en Bolivianos (`Bs`), badge de cortesía y control táctil (+/-) con feedback háptico.
 
-3. **Carrito Flotante & Pedidos por WhatsApp con Ticket Único:**
+3. **Carrito Flotante & Comandas de Cocina con Ticket Único:**
    - Barra flotante en la parte inferior (`fixed bottom-4`) que aparece automáticamente al seleccionar platos.
    - **Modal de Detalle / Modificación:** Permite ingresar notas específicas por plato (ej. *"Término medio"*, *"Sin vinagre"*), seleccionar entre **Mesa en Salón** (con número de mesa) o **Para Llevar / Delivery Tarija**, y notas para cocina.
-   - **Sistema de Tickets Únicos (`#RC-XXXX`):** Genera un código aleatorio de 4 dígitos para trazabilidad de cada comanda.
-   - **Mensaje de WhatsApp Estructurado:** Formateado con emojis, desglose de precios, nota del cliente, total en Bolivianos (Bs) e instrucciones claras para modificar o cancelar el pedido citando el código de ticket dentro de los primeros 10 minutos.
+   - **Sistema de Tickets Únicos (`#RC-XXXX`):** Genera un código aleatorio de 4 dígitos para identificar cada comanda.
+   - **Envío y edición en cocina:** Guarda las comandas en Firestore y permite actualizar el pedido de una mesa con el mismo ticket, sin crear una comanda nueva ni vaciar el carrito.
 
 4. **Mesero Sommelier IA (Simulado / Modal):**
    - Sugerencias automáticas de maridaje con vinos tarijeños (Terruño, Kohlberg, Aranjuez, Vino Patero artesanal), especialidades a la cruz (Lechón, Costillar) y combos familiares con botón directo para añadir la sugerencia al carrito.
@@ -40,7 +40,7 @@ La versión web y el KDS usan Firebase Authentication y Cloud Firestore para sin
 
 #### Preparar el proyecto Firebase
 
-1. En Firebase Console, habilita **Authentication > Sign-in method > Correo electrónico/contraseña**.
+1. En Firebase Console, habilita **Authentication > Sign-in method > Correo electrónico/contraseña** y **Anónimo**. La sesión anónima permite que el dispositivo recupere y edite su propia comanda de mesa sin exponerla a otros clientes.
 2. En **Authentication > Settings > Authorized domains**, agrega el dominio publicado de la aplicación (por ejemplo, `rio-chico-menu.vercel.app`). `localhost` se usa para desarrollo local.
 3. Publica las reglas de este repositorio: abre `firestore.rules`, copia todo su contenido y pégalo en **Firestore Database > Rules** en Firebase Console. Pulsa **Publicar**.
 4. En **Authentication > Users**, agrega la primera cuenta de administrador con correo y contraseña.
