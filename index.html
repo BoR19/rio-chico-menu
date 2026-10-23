@@ -1905,7 +1905,8 @@
 
     function openMesaQrModal(mesaName) {
       triggerHaptic(15);
-      const url = new URL(window.location.origin);
+      const appUrl = 'https://rio-chico-menu.vercel.app/';
+      const url = new URL(appUrl);
       url.searchParams.set("mesa", mesaName);
       const qrApiUrl = `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(url)}`;
       document.getElementById("qr-modal-title").textContent = `Código QR - ${mesaName}`;
