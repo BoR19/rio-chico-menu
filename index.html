@@ -1369,11 +1369,24 @@
       const urlParams = new URLSearchParams(window.location.search);
       const mesaParam = (urlParams.get("mesa") || "").trim();
       if (mesaParam) {
-        const found = store.mesas.find(m => m.name.toLowerCase().includes(mesaParam.toLowerCase()) || m.id.includes(mesaParam));
+        const normalizedMesa = mesaParam.toLowerCase();
+        const found = store.mesas.find(m => m.name.toLowerCase().includes(normalizedMesa) || m.id.includes(normalizedMesa));
         if (found) {
           store.currentTable = found;
         } else {
-          store.currentTable = { id: `m_${mesaParam}`, name: `Mesa ${mesaParam}`, seats: 4, status: "ocupada" };
+          const generatedMesa = {
+            id: `m_qr_${normalizedMesa.replace(/[^a-z0-9]+/g, '_')}`,
+            name: `Mesa ${mesaParam}`,
+            seats: 4,
+            status: "ocupada",
+            zona: "Mesa QR",
+            activeTicket: "",
+            mozo: "",
+            time: "",
+            total: 0
+          };
+          store.mesas.push(generatedMesa);
+          store.currentTable = generatedMesa;
         }
       }
 
@@ -2739,6 +2752,11 @@
         m.status = "ocupada";
         m.activeTicket = store.ticketId;
         m.total = store.activeOrder.total;
+        m.mozo = customerName || 'Cliente Río Chico';
+        m.time = '1 min';
+      }
+      if (store.orderMode === 'table') {
+        store.currentTable.status = 'ocupada';
       }
 
       // 4. Formatear WhatsApp
