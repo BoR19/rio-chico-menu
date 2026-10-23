@@ -1,0 +1,20 @@
+{
+  "name": "restaurante-rio-chico-catalogo",
+  "version": "5.0.0",
+  "description": "Catálogo digital interactivo y aplicación móvil para Restaurante Río Chico (Tarija, Bolivia)",
+  "scripts": {
+    "start": "node server.js",
+    "expo:start": "cd expo-app && npm start",
+    "expo:install": "cd expo-app && npm install"
+  },
+  "keywords": [
+    "rio-chico",
+    "tarija",
+    "menu-digital",
+    "react-native",
+    "expo",
+    "whatsapp-orders"
+  ],
+  "author": "Restaurante Río Chico",
+  "license": "ISC"
+}

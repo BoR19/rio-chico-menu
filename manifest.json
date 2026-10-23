@@ -1,0 +1,24 @@
+{
+  "name": "Restaurante Río Chico - Menú Digital",
+  "short_name": "Río Chico",
+  "description": "Menú digital interactivo con pedidos por WhatsApp, tradición a la leña en Tarija, Bolivia.",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#020617",
+  "theme_color": "#020617",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "assets/rio_chico_orange_glow (1)_2.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "assets/rio_chico_orange_glow (1)_2.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

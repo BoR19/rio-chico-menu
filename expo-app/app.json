@@ -1,0 +1,30 @@
+{
+  "expo": {
+    "name": "Restaurante Río Chico",
+    "slug": "rio-chico-menu",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/rio_chico_orange_glow (1)_2.png",
+    "userInterfaceStyle": "dark",
+    "splash": {
+      "image": "./assets/rio_chico_orange_glow (1)_2.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#020617"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "bo.com.riochico.menu",
+      "userInterfaceStyle": "dark"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/rio_chico_orange_glow (1)_2.png",
+        "backgroundColor": "#020617"
+      },
+      "package": "bo.com.riochico.menu"
+    },
+    "web": {
+      "favicon": "./assets/rio_chico_orange_glow (1)_2.png"
+    }
+  }
+}
