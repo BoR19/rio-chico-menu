@@ -3,7 +3,7 @@
   "version": "5.0.0",
   "description": "Catálogo digital interactivo y aplicación móvil para Restaurante Río Chico (Tarija, Bolivia)",
   "scripts": {
-    "start": "node server.js",
+    "start": "node local-server.js",
     "expo:start": "cd expo-app && npm start",
     "expo:install": "cd expo-app && npm install"
   },

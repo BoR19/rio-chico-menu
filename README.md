@@ -93,7 +93,7 @@ rio-chico-menu/
 ├── firebase.json               # Ubicación de las reglas Firestore
 ├── firestore.rules             # Reglas de acceso a pedidos, mesas y personal
 ├── manifest.json               # Manifiesto PWA para instalación en pantalla de inicio iOS/Android
-├── server.js                   # Servidor local Node.js de alta velocidad (puerto 3000)
+├── local-server.js             # Servidor local Node.js de alta velocidad (puerto 3000)
 ├── package.json                # Configuración de scripts del proyecto
 ├── assets/                     # Logos oficiales (3D, Cutout, Orange Glow, Wood Carbon)
 │   ├── rio_chico_orange_glow (1)_2.png

@@ -66,7 +66,7 @@ function createServer() {
 if (require.main === module) {
   const server = createServer();
   server.listen(PORT, () => {
-    console.log(`🚀 Restaurante Río Chico server running at: http://localhost:${PORT}`);
+    console.log(`🚀 Restaurante Río Chico local server running at: http://localhost:${PORT}`);
   });
 }
 
