@@ -18,6 +18,10 @@
   <script src="https://unpkg.com/@tailwindcss/browser@4"></script>
   <script src="https://unpkg.com/lucide@latest"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
+  <script src="firebase-config.js"></script>
 
   <style>
     body {
@@ -507,9 +511,9 @@
             <i data-lucide="plus" class="w-4 h-4"></i>
             <span>Nuevo Plato</span>
           </button>
-          <button onclick="openAddUserModal()" class="py-2.5 px-3.5 rounded-xl bg-stone-800 hover:bg-stone-700 text-stone-200 font-bold text-xs flex items-center gap-1.5 active:scale-95">
+          <button onclick="showStaffManagementInstructions()" class="py-2.5 px-3.5 rounded-xl bg-stone-800 hover:bg-stone-700 text-stone-200 font-bold text-xs flex items-center gap-1.5 active:scale-95">
             <i data-lucide="user-plus" class="w-4 h-4"></i>
-            <span>Nuevo Usuario</span>
+            <span>Gestionar Personal</span>
           </button>
         </div>
       </div>
@@ -785,32 +789,24 @@
       </div>
       <div>
         <h4 class="font-bold text-base text-white">Acceso de Personal</h4>
-        <p class="text-xs text-stone-400 mt-0.5">Ingresa tu PIN de 4 dígitos:</p>
+        <p class="text-xs text-stone-400 mt-0.5">Inicia sesión con tu cuenta de personal:</p>
       </div>
 
-      <div class="flex justify-center gap-2 my-2">
-        <input id="pin-display" type="password" maxlength="4" readonly placeholder="••••" class="w-40 py-2.5 text-center text-xl font-mono tracking-widest rounded-xl bg-stone-950 border border-stone-700 text-amber-400 focus:outline-none" />
+      <div class="space-y-2 text-left">
+        <label class="block text-xs text-stone-400">
+          Correo
+          <input id="staff-email" type="email" autocomplete="username" class="mt-1 w-full rounded-xl border border-stone-700 bg-stone-950 px-3 py-2.5 text-sm text-white focus:border-amber-500 focus:outline-none" placeholder="personal@restaurante.com" />
+        </label>
+        <label class="block text-xs text-stone-400">
+          Contraseña
+          <input id="staff-password" type="password" autocomplete="current-password" class="mt-1 w-full rounded-xl border border-stone-700 bg-stone-950 px-3 py-2.5 text-sm text-white focus:border-amber-500 focus:outline-none" placeholder="Contraseña de Firebase Authentication" />
+        </label>
       </div>
 
-      <!-- Teclado Numérico Touch -->
-      <div class="grid grid-cols-3 gap-2 max-w-[200px] mx-auto text-sm font-bold">
-        <button onclick="pressPin('1')" class="py-2.5 rounded-xl bg-stone-800 hover:bg-stone-700 text-white active:scale-90">1</button>
-        <button onclick="pressPin('2')" class="py-2.5 rounded-xl bg-stone-800 hover:bg-stone-700 text-white active:scale-90">2</button>
-        <button onclick="pressPin('3')" class="py-2.5 rounded-xl bg-stone-800 hover:bg-stone-700 text-white active:scale-90">3</button>
-        <button onclick="pressPin('4')" class="py-2.5 rounded-xl bg-stone-800 hover:bg-stone-700 text-white active:scale-90">4</button>
-        <button onclick="pressPin('5')" class="py-2.5 rounded-xl bg-stone-800 hover:bg-stone-700 text-white active:scale-90">5</button>
-        <button onclick="pressPin('6')" class="py-2.5 rounded-xl bg-stone-800 hover:bg-stone-700 text-white active:scale-90">6</button>
-        <button onclick="pressPin('7')" class="py-2.5 rounded-xl bg-stone-800 hover:bg-stone-700 text-white active:scale-90">7</button>
-        <button onclick="pressPin('8')" class="py-2.5 rounded-xl bg-stone-800 hover:bg-stone-700 text-white active:scale-90">8</button>
-        <button onclick="pressPin('9')" class="py-2.5 rounded-xl bg-stone-800 hover:bg-stone-700 text-white active:scale-90">9</button>
-        <button onclick="clearPin()" class="py-2.5 rounded-xl bg-red-950/60 text-red-300 active:scale-90">C</button>
-        <button onclick="pressPin('0')" class="py-2.5 rounded-xl bg-stone-800 hover:bg-stone-700 text-white active:scale-90">0</button>
-        <button onclick="submitPin()" class="py-2.5 rounded-xl bg-amber-600 text-white active:scale-90">➔</button>
-      </div>
-
-      <div class="text-[11px] text-stone-500 pt-1">
-        <span>Mozo: 1234 • Admin: 7777</span>
-      </div>
+      <p id="staff-login-error" class="hidden text-left text-xs text-red-300" role="alert"></p>
+      <button id="staff-login-button" onclick="submitStaffLogin()" class="w-full rounded-xl bg-amber-600 py-2.5 text-sm font-bold text-white active:scale-95">
+        Iniciar sesión
+      </button>
 
       <button onclick="closePinAuthModal()" class="w-full py-2 text-xs text-stone-400 hover:text-white">
         Cancelar
@@ -1008,53 +1004,6 @@
   </div>
 
 
-  <!-- MODAL: CREAR USUARIO (ROLES MOZO, CAJERO, ADMIN) -->
-  <div id="add-user-modal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-stone-950/85 backdrop-blur-md transition-opacity duration-300 opacity-0 pointer-events-none">
-    <div class="bg-stone-900 border border-stone-800 w-full max-w-sm rounded-3xl p-5 shadow-2xl space-y-3">
-      <div class="flex justify-between items-center border-b border-stone-800 pb-2">
-        <h4 class="font-bold text-sm text-white">Nuevo Personal</h4>
-        <button onclick="closeAddUserModal()" class="text-stone-400">✕</button>
-      </div>
-
-      <div class="space-y-2.5 text-xs">
-        <div>
-          <label class="block text-stone-400 mb-1">Nombre Completo:</label>
-          <input id="new-user-name" type="text" placeholder="Ej. Mariana Soliz" class="w-full px-3 py-2 rounded-xl bg-stone-950 border border-stone-700 text-white" />
-        </div>
-        <div>
-          <label class="block text-stone-400 mb-1">Contacto / Celular:</label>
-          <input id="new-user-contact" type="text" placeholder="+591 7..." class="w-full px-3 py-2 rounded-xl bg-stone-950 border border-stone-700 text-white" />
-        </div>
-        <div>
-          <label class="block text-stone-400 mb-1.5 font-bold">Rol Operativo:</label>
-          <div class="grid grid-cols-3 gap-1.5 text-center">
-            <label class="p-2 rounded-xl bg-stone-950 border border-stone-800 cursor-pointer has-checked:border-amber-500 has-checked:bg-amber-500/15">
-              <input type="radio" name="u-role" value="mozo" checked class="hidden" />
-              <span class="text-lg">🤵</span>
-              <span class="block font-bold text-[11px] text-stone-200 mt-0.5">Mozo</span>
-            </label>
-            <label class="p-2 rounded-xl bg-stone-950 border border-stone-800 cursor-pointer has-checked:border-amber-500 has-checked:bg-amber-500/15">
-              <input type="radio" name="u-role" value="cajero" class="hidden" />
-              <span class="text-lg">💵</span>
-              <span class="block font-bold text-[11px] text-stone-200 mt-0.5">Cajero</span>
-            </label>
-            <label class="p-2 rounded-xl bg-stone-950 border border-stone-800 cursor-pointer has-checked:border-amber-500 has-checked:bg-amber-500/15">
-              <input type="radio" name="u-role" value="admin" class="hidden" />
-              <span class="text-lg">👔</span>
-              <span class="block font-bold text-[11px] text-stone-200 mt-0.5">Admin</span>
-            </label>
-          </div>
-        </div>
-      </div>
-
-      <div class="flex justify-end gap-2 pt-3 border-t border-stone-800">
-        <button onclick="closeAddUserModal()" class="px-3 py-1.5 text-xs text-stone-400">Cancelar</button>
-        <button onclick="saveNewUser()" class="px-5 py-2 rounded-xl bg-amber-600 text-white font-bold text-xs shadow">Crear Usuario</button>
-      </div>
-    </div>
-  </div>
-
-
   <!-- MODAL: ASISTENTE MESERO IA -->
   <div id="ai-modal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-stone-950/85 backdrop-blur-md transition-opacity duration-300 opacity-0 pointer-events-none">
     <div class="bg-stone-900 border border-amber-500/30 w-full max-w-md rounded-3xl overflow-hidden shadow-2xl flex flex-col max-h-[85vh]">
@@ -1210,7 +1159,7 @@
       </div>
 
       <div class="p-4 border-t border-stone-800 bg-stone-950 flex flex-col gap-2">
-        <button onclick="sendOrderDirectToKitchenAndWhatsApp()" class="w-full py-3.5 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-sm md:text-base flex items-center justify-center gap-2 shadow-lg active:scale-[0.98] transition-all">
+        <button id="send-order-button" onclick="sendOrderDirectToKitchenAndWhatsApp()" class="w-full py-3.5 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-sm md:text-base flex items-center justify-center gap-2 shadow-lg active:scale-[0.98] transition-all">
           <i data-lucide="send" class="w-5 h-5"></i>
           <span>Enviar Comanda a Cocina & WhatsApp</span>
         </button>
@@ -1230,21 +1179,13 @@
     const CSV_URL = "https://docs.google.com/spreadsheets/d/1Kbk5U4fPVOYhcrNEOE9tBPQxR-hWZ1VcBoq-iwHQzX4/export?format=csv&gid=0";
 
     // ESTADO GLOBAL INTEGRAL (ESPECIFICACIÓN EL CHURO MOSITO)
-    function loadStaffSession() {
-      try {
-        const raw = localStorage.getItem("riochico_staff_session");
-        if (!raw) return { role: null, user: null };
-        const session = JSON.parse(raw);
-        const validRole = ["admin", "mozo", "cajero"].includes(session?.role);
-        if (validRole && typeof session.user === "string") return session;
-        console.warn("Sesión de personal guardada no válida; se iniciará como cliente.");
-      } catch (error) {
-        console.warn("No se pudo leer la sesión de personal; se iniciará como cliente.", error);
-      }
-      return { role: null, user: null };
-    }
+    let firebaseAuth = null;
+    let firebaseDb = null;
+    let unsubscribeOrders = null;
+    let unsubscribeTables = null;
+    let unsubscribeCalls = null;
+    let unsubscribeStaff = null;
 
-    // TODO: Persist mesas and comandas in a shared backend for cross-device kitchen updates.
     const store = {
       // 1. Identidad y Configuración de Marca (Colección configuracion/perfil)
       config: {
@@ -1257,7 +1198,7 @@
       },
 
       // 2. Sesión de Personal (Roles Mozo, Cajero, Admin vía PIN)
-      staffSession: loadStaffSession(),
+      staffSession: { role: null, user: null, uid: null },
       currentPinBuffer: "",
 
       // 3. Mesa Actual del Comensal (Detectada por URL ?mesa=X o default)
@@ -1265,85 +1206,29 @@
         id: "m_4",
         name: "Mesa 04",
         seats: 4,
-        status: "ocupada"
+        status: "libre"
       },
 
       // 4. Comanda Activa de la Mesa (ActiveOrderBanner)
-      activeOrder: {
-        id: "#RC-8421",
-        tableId: "m_4",
-        tableName: "Mesa 04",
-        status: "en-fogones", // 'pendiente' | 'en-fogones' | 'servido' | 'por-pagar' | 'pagado'
-        time: "12 min",
-        total: 119,
-        items: [
-          { nombre: "Lechón a la Cruz (Porción Entera)", qty: 1, precio: 85, nota: "Cuero crocante" },
-          { nombre: "Sopa de Maní con Presa", qty: 1, precio: 12, nota: "" },
-          { nombre: "Terruño Tinto", qty: 1, precio: 22, nota: "" }
-        ]
-      },
+      activeOrder: null,
 
       // 5. Llamadas de Clientes (Mozo y Cuenta) en Tiempo Real
-      llamadas: [
-        { id: "call_1", tableId: "m_4", tableName: "Mesa 04", type: "mozo", time: "Hace 2 min", status: "pendiente", details: "" }
-      ],
+      llamadas: [],
 
       // 6. Colección de Mesas y Códigos QR
       mesas: [
         { id: "m_1", name: "Mesa 01", seats: 4, status: "libre", zona: "Salón Principal", activeTicket: "", mozo: "", time: "", total: 0 },
         { id: "m_2", name: "Mesa 02", seats: 4, status: "libre", zona: "Salón Principal", activeTicket: "", mozo: "", time: "", total: 0 },
-        { id: "m_3", name: "Mesa 03", seats: 6, status: "ocupada", zona: "Salón Principal", activeTicket: "#RC-1042", mozo: "Carlos M.", time: "14 min", total: 60 },
-        { id: "m_4", name: "Mesa 04", seats: 4, status: "ocupada", zona: "Parrilla & Brasas", activeTicket: "#RC-8421", mozo: "Carlos M.", time: "28 min", total: 119 },
+        { id: "m_3", name: "Mesa 03", seats: 6, status: "libre", zona: "Salón Principal", activeTicket: "", mozo: "", time: "", total: 0 },
+        { id: "m_4", name: "Mesa 04", seats: 4, status: "libre", zona: "Parrilla & Brasas", activeTicket: "", mozo: "", time: "", total: 0 },
         { id: "m_5", name: "Mesa 05", seats: 8, status: "libre", zona: "Parrilla & Brasas", activeTicket: "", mozo: "", time: "", total: 0 },
         { id: "m_6", name: "Mesa 06", seats: 4, status: "libre", zona: "Terraza Tarijeña", activeTicket: "", mozo: "", time: "", total: 0 },
-        { id: "m_7", name: "Mesa 07", seats: 6, status: "ocupada", zona: "Terraza Tarijeña", activeTicket: "#RC-7492", mozo: "Rodrigo T.", time: "35 min", total: 145 },
-        { id: "m_8", name: "Mesa 08", seats: 4, status: "por-pagar", zona: "Terraza Tarijeña", activeTicket: "#RC-6119", mozo: "Rodrigo T.", time: "52 min", total: 85 }
+        { id: "m_7", name: "Mesa 07", seats: 6, status: "libre", zona: "Terraza Tarijeña", activeTicket: "", mozo: "", time: "", total: 0 },
+        { id: "m_8", name: "Mesa 08", seats: 4, status: "libre", zona: "Terraza Tarijeña", activeTicket: "", mozo: "", time: "", total: 0 }
       ],
 
       // 7. Colección de Comandas KDS en Cocina
-      comandas: [
-        {
-          id: "cmd_1",
-          ticket: "#RC-8421",
-          mesa: "Mesa 04 (Salón)",
-          mozo: "Carlos M.",
-          tiempo: "12 min",
-          status: "en-fogones",
-          isAddition: false,
-          items: [
-            { nombre: "Lechón a la Cruz (Porción Entera)", qty: 2, nota: "Cuero bien crocante", listo: false, addition: false },
-            { nombre: "Costillar a la Cruz", qty: 1, nota: "Término bien dorado", listo: false, addition: false },
-            { nombre: "Ensaladas de cortesía 🥗", qty: 3, nota: "", listo: true, addition: false }
-          ]
-        },
-        {
-          id: "cmd_2",
-          ticket: "#RC-7492",
-          mesa: "Mesa 07 (Terraza)",
-          mozo: "Rodrigo T.",
-          tiempo: "24 min",
-          status: "en-fogones",
-          isAddition: true,
-          items: [
-            { nombre: "Costillar y Lechón Mixto", qty: 2, nota: "Porción bien servida", listo: false, addition: false },
-            { nombre: "Jarra Vino Patero (1 Litro)", qty: 1, nota: "", listo: true, addition: true },
-            { nombre: "Sopa de Maní con Presa", qty: 2, nota: "Bien caliente", listo: true, addition: true }
-          ]
-        },
-        {
-          id: "cmd_3",
-          ticket: "#RC-1042",
-          mesa: "Mesa 03 (Salón)",
-          mozo: "Carlos M.",
-          tiempo: "7 min",
-          status: "pendiente",
-          isAddition: false,
-          items: [
-            { nombre: "Saice Criollo", qty: 2, nota: "Sin picante para niños", listo: false, addition: false },
-            { nombre: "Sábalo del Pilcomayo", qty: 1, nota: "Frito bien dorado", listo: false, addition: false }
-          ]
-        }
-      ],
+      comandas: [],
 
       // 8. Catálogo del Menú e Inventario
       dishes: [],
@@ -1357,12 +1242,7 @@
       editingDishId: null,
 
       // 9. Personal y Usuarios Registrados
-      users: [
-        { id: "u_1", nombre: "Héctor Valenzuela", rol: "admin", contacto: "admin@riochico.bo", pin: "7777" },
-        { id: "u_2", nombre: "Valeria Guzmán", rol: "cajero", contacto: "caja1@riochico.bo", pin: "1234" },
-        { id: "u_3", nombre: "Carlos Mendoza", rol: "mozo", contacto: "+591 71829911", pin: "1234" },
-        { id: "u_4", nombre: "Rodrigo Torrez", rol: "mozo", contacto: "+591 76192833", pin: "1234" }
-      ],
+      users: [],
 
       // Estados de Filtros de Pestaña
       activeTab: "menu",
@@ -1454,12 +1334,239 @@
     }
 
     // ==========================================
-    // AUTENTICACIÓN POR PIN (1234 Mozo / 7777 Admin)
+    // FIREBASE AUTHENTICATION & FIRESTORE
     // ==========================================
+    function initFirebase() {
+      const config = window.RIO_CHICO_FIREBASE_CONFIG;
+      if (!window.firebase || !config || !config.projectId) {
+        console.error("Firebase SDK o configuración no disponible.");
+        return;
+      }
+      try {
+        const app = firebase.initializeApp(config);
+        firebaseAuth = app.auth();
+        firebaseDb = app.firestore();
+        firebaseAuth.onAuthStateChanged(user => {
+          if (user) {
+            activateStaffSession(user);
+          } else {
+            stopStaffListeners();
+            store.staffSession = { role: null, user: null, uid: null };
+            renderAdaptiveDock();
+          }
+        });
+      } catch (error) {
+        console.error("No se pudo iniciar Firebase:", error);
+        showToast("No se pudo conectar con Firebase.");
+      }
+    }
+
+    async function activateStaffSession(user) {
+      try {
+        const profileSnapshot = await firebaseDb.collection("staff").doc(user.uid).get();
+        const profile = profileSnapshot.data();
+        if (!profileSnapshot.exists || profile.active !== true ||
+            !["admin", "mozo", "cajero"].includes(profile.role)) {
+          const error = document.getElementById("staff-login-error");
+          if (error) {
+            error.textContent = "La cuenta no tiene un perfil de personal activo. Contacta al administrador.";
+            error.classList.remove("hidden");
+          }
+          await firebaseAuth.signOut();
+          return;
+        }
+
+        store.staffSession = { role: profile.role, user: user.email || user.uid, uid: user.uid };
+        closePinAuthModal();
+        renderAdaptiveDock();
+        showToast(`Sesión iniciada como ${profile.role}.`);
+        if (profile.role === "admin" || profile.role === "mozo") switchTab("mesas");
+        subscribeToStaffData();
+      } catch (error) {
+        console.error("No se pudo validar la cuenta del personal:", error);
+        const message = document.getElementById("staff-login-error");
+        if (message) {
+          message.textContent = "No se pudo validar el perfil. Revisa las reglas de Firestore.";
+          message.classList.remove("hidden");
+        }
+        await firebaseAuth.signOut();
+      }
+    }
+
+    function stopStaffListeners() {
+      if (unsubscribeOrders) unsubscribeOrders();
+      if (unsubscribeTables) unsubscribeTables();
+      if (unsubscribeCalls) unsubscribeCalls();
+      if (unsubscribeStaff) unsubscribeStaff();
+      unsubscribeOrders = null;
+      unsubscribeTables = null;
+      unsubscribeCalls = null;
+      unsubscribeStaff = null;
+      store.comandas = [];
+      store.activeOrder = null;
+      store.llamadas = [];
+      renderActiveOrderBanner();
+      renderStaffCallsBanner();
+    }
+
+    async function ensureBaseTables() {
+      const tables = store.mesas.slice();
+      await Promise.all(tables.map(async table => {
+        const ref = firebaseDb.collection("tables").doc(table.id);
+        await firebaseDb.runTransaction(async transaction => {
+          const snapshot = await transaction.get(ref);
+          if (!snapshot.exists) {
+            transaction.set(ref, {
+              id: table.id,
+              name: table.name,
+              seats: table.seats,
+              zona: table.zona,
+              status: "libre",
+              activeTicket: "",
+              activeOrderId: "",
+              mozo: "",
+              time: "",
+              total: 0
+            });
+          }
+        });
+      }));
+    }
+
+    function subscribeToStaffData() {
+      stopStaffListeners();
+      ensureBaseTables().then(() => {
+        if (!store.staffSession.uid) return;
+        unsubscribeTables = firebaseDb.collection("tables").onSnapshot(snapshot => {
+          const remoteTables = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }));
+          store.mesas = remoteTables;
+          if (store.activeTab === "mesas") renderMesas();
+        }, error => {
+          console.error("Error escuchando mesas en Firestore:", error);
+          showToast("No se pudieron sincronizar las mesas.");
+        });
+
+        unsubscribeCalls = firebaseDb.collection("calls").onSnapshot(snapshot => {
+          store.llamadas = snapshot.docs
+            .map(doc => ({ ...doc.data(), id: doc.id }))
+            .filter(call => call.status === "pendiente")
+            .sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
+          renderStaffCallsBanner();
+        }, error => {
+          console.error("Error escuchando llamadas en Firestore:", error);
+          showToast("No se pudieron sincronizar las solicitudes de mesa.");
+        });
+
+        if (store.staffSession.role === "admin") {
+          unsubscribeStaff = firebaseDb.collection("staff").onSnapshot(snapshot => {
+            store.users = snapshot.docs.map(doc => {
+              const profile = doc.data();
+              return {
+                id: doc.id,
+                nombre: profile.name || profile.email || doc.id,
+                contacto: profile.email || "",
+                rol: profile.role,
+                active: profile.active === true
+              };
+            });
+            if (store.activeTab === "admin" && store.adminSubTab === "personal") renderUsers();
+          }, error => {
+            console.error("No se pudo cargar el personal:", error);
+            showToast("No se pudo cargar la lista de personal.");
+          });
+        }
+
+        unsubscribeOrders = firebaseDb.collection("orders").onSnapshot(snapshot => {
+          const orders = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }));
+          store.comandas = orders
+            .filter(order => order.kdsArchived !== true && order.status !== "pagado")
+            .map(order => ({
+              ...order,
+              firestoreId: order.id,
+              mesa: order.mode === "table" ? order.tableName : "Para Llevar",
+              tiempo: "En curso",
+              items: (order.items || []).map(item => ({
+                ...item,
+                listo: item.listo === true,
+                addition: item.addition === true
+              }))
+            }));
+
+          const tableOrders = orders
+            .filter(order => order.mode === "table" && order.tableId && order.status !== "pagado")
+            .sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
+          const latestOrder = tableOrders.find(order => order.tableId === store.currentTable.id);
+          if (latestOrder) {
+            const relatedOrders = tableOrders.filter(order => order.tableId === latestOrder.tableId);
+            store.activeOrder = {
+              id: latestOrder.ticket,
+              firestoreId: latestOrder.id,
+              tableId: latestOrder.tableId,
+              tableName: latestOrder.tableName,
+              status: latestOrder.status,
+              time: "En curso",
+              total: relatedOrders.reduce((sum, order) => sum + (Number(order.total) || 0), 0),
+              items: relatedOrders.flatMap(order => order.items || [])
+            };
+          } else {
+            store.activeOrder = null;
+          }
+
+          renderActiveOrderBanner();
+          if (store.activeTab === "cocina") renderCocina();
+          if (store.activeTab === "mesas") renderMesas();
+          syncTablesFromOrders(store.comandas);
+        }, error => {
+          console.error("Error escuchando pedidos en Firestore:", error);
+          showToast("No se pudieron sincronizar los pedidos.");
+        });
+      }).catch(error => {
+        console.error("No se pudieron inicializar las mesas:", error);
+        showToast("No se pudieron preparar las mesas en Firestore.");
+      });
+    }
+
+    async function syncTablesFromOrders(orders) {
+      const latestByTable = new Map();
+      orders
+        .filter(order => order.mode === "table" && order.tableId && order.status !== "pagado")
+        .forEach(order => {
+          const existing = latestByTable.get(order.tableId);
+          if (!existing || (order.createdAt?.seconds || 0) > (existing.createdAt?.seconds || 0)) {
+            latestByTable.set(order.tableId, order);
+          }
+        });
+
+      for (const [tableId, order] of latestByTable) {
+        const table = store.mesas.find(item => item.id === tableId);
+        if (!table || table.activeOrderId === order.id || !store.staffSession.uid) continue;
+        try {
+          await firebaseDb.collection("tables").doc(tableId).set({
+            ...table,
+            status: order.status === "por-pagar" ? "por-pagar" : "ocupada",
+            activeTicket: order.ticket,
+            activeOrderId: order.id,
+            total: orders
+              .filter(item => item.tableId === tableId && item.status !== "pagado")
+              .reduce((sum, item) => sum + (Number(item.total) || 0), 0)
+          });
+        } catch (error) {
+          console.error(`No se pudo actualizar ${table.name}:`, error);
+        }
+      }
+    }
+
     function openPinAuthModal() {
       triggerHaptic(15);
-      store.currentPinBuffer = "";
-      updatePinDisplay();
+      const error = document.getElementById("staff-login-error");
+      if (error) {
+        error.textContent = "";
+        error.classList.add("hidden");
+      }
+      if (!firebaseAuth) {
+        alert("Firebase no está disponible. Revisa la configuración de la aplicación.");
+        return;
+      }
       const modal = document.getElementById("pin-modal");
       modal.classList.remove("opacity-0", "pointer-events-none");
     }
@@ -1467,63 +1574,42 @@
     function closePinAuthModal() {
       const modal = document.getElementById("pin-modal");
       modal.classList.add("opacity-0", "pointer-events-none");
-      store.currentPinBuffer = "";
     }
 
-    function pressPin(digit) {
-      triggerHaptic(10);
-      if (store.currentPinBuffer.length < 4) {
-        store.currentPinBuffer += digit;
-        updatePinDisplay();
-        if (store.currentPinBuffer.length === 4) {
-          setTimeout(submitPin, 150);
-        }
+    async function submitStaffLogin() {
+      const email = document.getElementById("staff-email").value.trim();
+      const password = document.getElementById("staff-password").value;
+      const error = document.getElementById("staff-login-error");
+      const button = document.getElementById("staff-login-button");
+      error.classList.add("hidden");
+      if (!email || !password) {
+        error.textContent = "Ingresa el correo y la contraseña.";
+        error.classList.remove("hidden");
+        return;
       }
-    }
 
-    function clearPin() {
-      triggerHaptic(15);
-      store.currentPinBuffer = "";
-      updatePinDisplay();
-    }
-
-    function updatePinDisplay() {
-      const display = document.getElementById("pin-display");
-      if (display) {
-        display.value = "•".repeat(store.currentPinBuffer.length);
-      }
-    }
-
-    function submitPin() {
-      const pin = store.currentPinBuffer;
-      if (pin === "7777") {
-        store.staffSession = { role: "admin", user: "Administrador General" };
-        localStorage.setItem("riochico_staff_session", JSON.stringify(store.staffSession));
-        closePinAuthModal();
-        renderAdaptiveDock();
-        showToast("👑 Sesión iniciada como Administrador.");
-        switchTab("admin");
-      } else if (pin === "1234") {
-        store.staffSession = { role: "mozo", user: "Mozo / Cocina KDS" };
-        localStorage.setItem("riochico_staff_session", JSON.stringify(store.staffSession));
-        closePinAuthModal();
-        renderAdaptiveDock();
-        showToast("🤵 Sesión iniciada como Mozo / Cocina.");
-        switchTab("mesas");
-      } else {
-        triggerHaptic(35);
-        alert("PIN incorrecto. Usa 1234 para Mozo o 7777 para Admin.");
-        clearPin();
+      button.disabled = true;
+      button.textContent = "Iniciando sesión...";
+      try {
+        await firebaseAuth.signInWithEmailAndPassword(email, password);
+      } catch (err) {
+        console.error("Error al iniciar sesión:", err);
+        error.textContent = err.code === "auth/invalid-credential"
+          ? "Correo o contraseña incorrectos."
+          : "No se pudo iniciar sesión. Verifica la cuenta y la conexión.";
+        error.classList.remove("hidden");
+      } finally {
+        button.disabled = false;
+        button.textContent = "Iniciar sesión";
       }
     }
 
     function logoutStaff() {
       triggerHaptic(20);
-      store.staffSession = { role: null, user: null };
-      localStorage.removeItem("riochico_staff_session");
-      renderAdaptiveDock();
-      showToast("Sesión cerrada. Modo Cliente activado.");
-      switchTab("menu");
+      if (firebaseAuth) firebaseAuth.signOut().catch(error => {
+        console.error("No se pudo cerrar sesión:", error);
+        alert("No se pudo cerrar sesión. Intenta nuevamente.");
+      });
     }
 
     // ==========================================
@@ -1704,19 +1790,22 @@
     // ==========================================
     // ATENCIÓN A LA MESA (Llamar Mozo & Pedir Cuenta)
     // ==========================================
-    function callMozo() {
+    async function callMozo() {
       triggerHaptic(25);
-      store.llamadas.unshift({
-        id: `call_${Date.now()}`,
-        tableId: store.currentTable.id,
-        tableName: store.currentTable.name,
-        type: "mozo",
-        time: "Hace 1 min",
-        status: "pendiente",
-        details: ""
-      });
-      renderStaffCallsBanner();
-      showToast(`🔔 Solicitud enviada: El mozo se dirige a la ${store.currentTable.name}.`);
+      try {
+        await firebaseDb.collection("calls").add({
+          tableId: store.currentTable.id,
+          tableName: store.currentTable.name,
+          type: "mozo",
+          details: "",
+          status: "pendiente",
+          createdAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+        showToast(`🔔 Solicitud enviada desde ${store.currentTable.name}.`);
+      } catch (error) {
+        console.error("No se pudo enviar la llamada al mozo:", error);
+        alert("No se pudo enviar la solicitud. Revisa tu conexión e inténtalo otra vez.");
+      }
     }
 
     function openBillModal() {
@@ -1772,7 +1861,7 @@
       }
     }
 
-    function confirmBillRequest() {
+    async function confirmBillRequest() {
       triggerHaptic(30);
       const activeOrder = getCurrentTableActiveOrder();
       if (!activeOrder) {
@@ -1788,28 +1877,21 @@
         ? `Efectivo (Paga con ${cashGiven || total} Bs, Cambio: ${change > 0 ? change : 0} Bs)`
         : `Pago por QR Banco`;
 
-      store.llamadas.unshift({
-        id: `call_${Date.now()}`,
-        tableId: store.currentTable.id,
-        tableName: store.currentTable.name,
-        type: "cuenta",
-        time: "Hace 1 min",
-        status: "pendiente",
-        details: details
-      });
-
-      if (activeOrder) {
-        activeOrder.status = "por-pagar";
+      try {
+        await firebaseDb.collection("calls").add({
+          tableId: store.currentTable.id,
+          tableName: store.currentTable.name,
+          type: "cuenta",
+          details,
+          status: "pendiente",
+          createdAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+        closeBillModal();
+        showToast("Solicitud de cuenta enviada a Caja y Mozo.");
+      } catch (error) {
+        console.error("No se pudo enviar la solicitud de cuenta:", error);
+        alert("No se pudo enviar la solicitud. Revisa tu conexión e inténtalo otra vez.");
       }
-
-      // Actualizar estado de la mesa en el mapa
-      const m = store.mesas.find(x => x.id === store.currentTable.id);
-      if (m) m.status = "por-pagar";
-
-      closeBillModal();
-      renderActiveOrderBanner();
-      renderStaffCallsBanner();
-      showToast("Solicitud de cuenta enviada a Caja y Mozo.");
     }
 
     function renderStaffCallsBanner() {
@@ -1829,13 +1911,30 @@
       }
     }
 
-    function resolveTopCall() {
+    async function resolveTopCall() {
       triggerHaptic(20);
-      const pendingCalls = store.llamadas.filter(l => l.status === "pendiente");
+      const pendingCalls = store.llamadas;
       if (pendingCalls.length > 0) {
-        pendingCalls[0].status = "atendido";
-        renderStaffCallsBanner();
-        showToast("Llamada marcada como atendida.");
+        const call = pendingCalls[0];
+        try {
+          const batch = firebaseDb.batch();
+          batch.update(firebaseDb.collection("calls").doc(call.id), { status: "atendido" });
+          if (call.type === "cuenta") {
+            const [orders, table] = await Promise.all([
+              firebaseDb.collection("orders").where("tableId", "==", call.tableId).get(),
+              firebaseDb.collection("tables").doc(call.tableId).get()
+            ]);
+            orders.docs.forEach(order => {
+              if (order.data().status !== "pagado") batch.update(order.ref, { status: "por-pagar" });
+            });
+            if (table.exists) batch.update(table.ref, { status: "por-pagar" });
+          }
+          await batch.commit();
+          showToast("Solicitud marcada como atendida.");
+        } catch (error) {
+          console.error("No se pudo atender la solicitud:", error);
+          alert("No se pudo guardar la atención de la solicitud.");
+        }
       }
     }
 
@@ -1938,34 +2037,61 @@
       renderMesas();
     }
 
-    function occupyTable(mesaId) {
+    async function occupyTable(mesaId) {
       triggerHaptic(20);
       const m = store.mesas.find(x => x.id === mesaId);
       if (m) {
-        m.status = "ocupada";
-        m.activeTicket = generateTicketId();
-        m.mozo = "Carlos M.";
-        m.time = "1 min";
-        m.total = 0;
-        renderMesas();
-        showToast(`${m.name} ocupada.`);
+        const updated = {
+          ...m,
+          status: "ocupada",
+          activeTicket: generateTicketId(),
+          mozo: store.staffSession.user,
+          time: "1 min",
+          total: 0
+        };
+        try {
+          await firebaseDb.collection("tables").doc(mesaId).set(updated);
+          Object.assign(m, updated);
+          renderMesas();
+          showToast(`${m.name} ocupada.`);
+        } catch (error) {
+          console.error("No se pudo ocupar la mesa:", error);
+          alert("No se pudo actualizar la mesa en Firestore.");
+        }
       }
     }
 
-    function cobrarYLiberarMesa(mesaId) {
+    async function cobrarYLiberarMesa(mesaId) {
       triggerHaptic(25);
       const m = store.mesas.find(x => x.id === mesaId);
       if (m) {
-        m.status = "libre";
-        m.activeTicket = "";
-        m.mozo = "";
-        m.time = "";
-        m.total = 0;
-        // Limpiar llamadas de esta mesa
-        store.llamadas = store.llamadas.filter(l => l.tableId !== mesaId);
-        renderMesas();
-        renderStaffCallsBanner();
-        showToast(`Mesa cobrada con éxito y liberada a Verde.`);
+        try {
+          const orders = await firebaseDb.collection("orders").where("tableId", "==", mesaId).get();
+          const batch = firebaseDb.batch();
+          orders.docs.forEach(order => {
+            if (order.data().status !== "pagado") batch.update(order.ref, { status: "pagado" });
+          });
+          batch.set(firebaseDb.collection("tables").doc(mesaId), {
+            ...m,
+            status: "libre",
+            activeTicket: "",
+            activeOrderId: "",
+            mozo: "",
+            time: "",
+            total: 0
+          });
+          await batch.commit();
+          Object.assign(m, { status: "libre", activeTicket: "", activeOrderId: "", mozo: "", time: "", total: 0 });
+          store.activeOrder = null;
+          store.llamadas = store.llamadas.filter(l => l.tableId !== mesaId);
+          renderMesas();
+          renderActiveOrderBanner();
+          renderStaffCallsBanner();
+          showToast(`${m.name} cobrada y liberada.`);
+        } catch (error) {
+          console.error("No se pudo liberar la mesa:", error);
+          alert("No se pudo cerrar la comanda en Firestore.");
+        }
       }
     }
 
@@ -1992,25 +2118,37 @@
     function closeAddMesaModal() {
       document.getElementById("add-mesa-modal").classList.add("opacity-0", "pointer-events-none");
     }
-    function saveNewMesa() {
+    async function saveNewMesa() {
       const name = document.getElementById("new-mesa-name").value.trim();
-      const cap = parseInt(document.getElementById("new-mesa-cap").value) || 4;
+      const capacity = Number(document.getElementById("new-mesa-cap").value);
+      const cap = Number.isInteger(capacity) && capacity > 0 ? capacity : 4;
       const zona = document.getElementById("new-mesa-zona").value;
       if (!name) return alert("Ingresa el nombre de la mesa.");
-      store.mesas.push({
+      if (store.mesas.some(table => table.name.toLowerCase() === name.toLowerCase())) {
+        return alert("Ya existe una mesa con ese nombre.");
+      }
+      const newTable = {
         id: `m_${Date.now()}`,
         name: name,
         seats: cap,
         zona: zona,
         status: "libre",
         activeTicket: "",
+        activeOrderId: "",
         mozo: "",
         time: "",
         total: 0
-      });
-      closeAddMesaModal();
-      renderMesas();
-      showToast(`Mesa "${name}" agregada con éxito.`);
+      };
+      try {
+        await firebaseDb.collection("tables").doc(newTable.id).set(newTable);
+        store.mesas.push(newTable);
+        closeAddMesaModal();
+        renderMesas();
+        showToast(`Mesa "${name}" agregada con éxito.`);
+      } catch (error) {
+        console.error("No se pudo guardar la mesa:", error);
+        alert("No se pudo guardar la mesa en Firestore.");
+      }
     }
 
     // ==========================================
@@ -2106,34 +2244,58 @@
       renderCocina();
     }
 
-    function toggleKdsItem(comandaId, itemIdx) {
+    async function toggleKdsItem(comandaId, itemIdx) {
       triggerHaptic(15);
       const cmd = store.comandas.find(c => c.id === comandaId);
       if (cmd && cmd.items[itemIdx]) {
-        cmd.items[itemIdx].listo = !cmd.items[itemIdx].listo;
-        renderCocina();
+        const items = cmd.items.map((item, index) => ({
+          ...item,
+          listo: index === itemIdx ? !item.listo : item.listo
+        }));
+        try {
+          await firebaseDb.collection("orders").doc(cmd.firestoreId).update({ items });
+          cmd.items = items;
+          renderCocina();
+        } catch (error) {
+          console.error("No se pudo actualizar el plato:", error);
+          alert("No se pudo guardar el cambio en cocina.");
+        }
       }
     }
 
-    function setKdsStatus(comandaId, newStatus) {
+    async function setKdsStatus(comandaId, newStatus) {
       triggerHaptic(20);
       const cmd = store.comandas.find(c => c.id === comandaId);
       if (cmd) {
-        cmd.status = newStatus;
-        if (store.activeOrder && store.activeOrder.id === cmd.ticket) {
-          store.activeOrder.status = newStatus;
-          renderActiveOrderBanner();
+        try {
+          await firebaseDb.collection("orders").doc(cmd.firestoreId).update({ status: newStatus });
+          cmd.status = newStatus;
+          if (store.activeOrder && store.activeOrder.id === cmd.ticket) {
+            store.activeOrder.status = newStatus;
+            renderActiveOrderBanner();
+          }
+          renderCocina();
+          showToast(`Comanda ${cmd.ticket} actualizada.`);
+        } catch (error) {
+          console.error("No se pudo cambiar el estado de la comanda:", error);
+          alert("No se pudo guardar el estado de la comanda.");
         }
-        renderCocina();
-        showToast(`Comanda ${cmd.ticket} actualizada a ${newStatus}.`);
       }
     }
 
-    function finishKdsComanda(comandaId) {
+    async function finishKdsComanda(comandaId) {
       triggerHaptic(20);
-      store.comandas = store.comandas.filter(c => c.id !== comandaId);
-      renderCocina();
-      showToast("Comanda entregada y finalizada.");
+      const cmd = store.comandas.find(c => c.id === comandaId);
+      if (!cmd) return;
+      try {
+        await firebaseDb.collection("orders").doc(cmd.firestoreId).update({ kdsArchived: true });
+        store.comandas = store.comandas.filter(c => c.id !== comandaId);
+        renderCocina();
+        showToast("Comanda finalizada.");
+      } catch (error) {
+        console.error("No se pudo finalizar la comanda:", error);
+        alert("No se pudo finalizar la comanda en Firestore.");
+      }
     }
 
     // ==========================================
@@ -2389,6 +2551,11 @@
       if (!container) return;
       if (countLabel) countLabel.textContent = `${store.users.length} miembros registrados`;
 
+      if (store.users.length === 0) {
+        container.innerHTML = `<p class="rounded-xl border border-stone-800 bg-stone-950 p-4 text-xs text-stone-400">No hay perfiles de personal cargados en Firebase.</p>`;
+        return;
+      }
+
       container.innerHTML = store.users.map(u => {
         let roleBadge = "bg-blue-500/20 text-blue-300 border-blue-500/30";
         let icon = "🤵";
@@ -2401,12 +2568,11 @@
               <div class="w-10 h-10 rounded-full bg-stone-900 border border-stone-700 flex items-center justify-center text-lg">${icon}</div>
               <div>
                 <h5 class="text-xs font-bold text-white">${escapeHtml(u.nombre)}</h5>
-                <p class="text-[11px] text-stone-400">${escapeHtml(u.contacto)} • PIN: ${u.pin || '••••'}</p>
+                <p class="text-[11px] text-stone-400">${escapeHtml(u.contacto)} • ${u.active ? "Activo" : "Desactivado"}</p>
               </div>
             </div>
             <div class="flex items-center gap-2">
               <span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold border ${roleBadge}">${u.rol.toUpperCase()}</span>
-              <button onclick="deleteUser('${u.id}')" class="p-1 text-stone-500 hover:text-red-400">✕</button>
             </div>
           </div>
         `;
@@ -2415,27 +2581,8 @@
       lucide.createIcons();
     }
 
-    function openAddUserModal() {
-      document.getElementById("add-user-modal").classList.remove("opacity-0", "pointer-events-none");
-    }
-    function closeAddUserModal() {
-      document.getElementById("add-user-modal").classList.add("opacity-0", "pointer-events-none");
-    }
-    function saveNewUser() {
-      const name = document.getElementById("new-user-name").value.trim();
-      const contact = document.getElementById("new-user-contact").value.trim();
-      const role = document.querySelector('input[name="u-role"]:checked')?.value || "mozo";
-      if (!name) return alert("Ingresa el nombre del usuario.");
-      store.users.push({ id: `u_${Date.now()}`, nombre: name, rol: role, contacto: contact || "Sin contacto", pin: role === 'admin' ? '7777' : '1234' });
-      closeAddUserModal();
-      renderUsers();
-      showToast(`Usuario "${name}" creado exitosamente.`);
-    }
-    function deleteUser(id) {
-      if (confirm("¿Eliminar usuario?")) {
-        store.users = store.users.filter(u => u.id !== id);
-        renderUsers();
-      }
+    function showStaffManagementInstructions() {
+      alert("Por seguridad, crea las cuentas en Firebase Console: Authentication > Users. Luego crea el perfil correspondiente en Firestore > staff usando el UID de esa cuenta.");
     }
 
     // ==========================================
@@ -2773,10 +2920,11 @@
     }
 
     // ENVÍO DE COMANDA A COCINA KDS Y WHATSAPP
-    function sendOrderDirectToKitchenAndWhatsApp() {
+    async function sendOrderDirectToKitchenAndWhatsApp() {
       triggerHaptic(30);
       const items = Object.values(store.cart);
       if (items.length === 0) return alert("Selecciona al menos un plato.");
+      if (!firebaseDb) return alert("No se pudo conectar con Firestore. El pedido sigue en tu carrito; intenta nuevamente.");
 
       const customerName = document.getElementById("input-customer-name").value.trim() || "Cliente Río Chico";
       const notes = document.getElementById("input-general-notes").value.trim();
@@ -2789,72 +2937,97 @@
       const currentActiveOrder = getCurrentTableActiveOrder();
       const isTableOrder = store.orderMode === 'table';
       const isAddition = Boolean(isTableOrder && currentActiveOrder && currentActiveOrder.status !== 'pagado');
-
-      // 1. Enviar a Cocina KDS
-      store.comandas.unshift({
-        id: `cmd_${Date.now()}`,
-        ticket: store.ticketId,
-        mesa: isTableOrder ? store.currentTable.name : 'Para Llevar',
-        tableId: isTableOrder ? store.currentTable.id : null,
-        mozo: customerName,
-        tiempo: "1 min",
-        status: "pendiente",
-        isAddition: isAddition,
-        items: items.map(i => ({ nombre: i.dish.nombre, qty: i.qty, nota: i.note, listo: false, addition: isAddition }))
-      });
-
-      // 2. Actualizar Comanda Activa de la Mesa
-      store.activeOrder = {
-        id: store.ticketId,
-        tableId: isTableOrder ? store.currentTable.id : null,
-        tableName: isTableOrder ? store.currentTable.name : 'Para Llevar',
-        status: "en-fogones",
-        time: "1 min",
-        total: (isAddition ? currentActiveOrder.total : 0) + totalPrice,
-        items: [
-          ...(isAddition ? currentActiveOrder.items : []),
-          ...items.map(i => ({ nombre: i.dish.nombre, qty: i.qty, precio: i.dish.precio, nota: i.note }))
-        ]
-      };
-
-      // 3. Actualizar Estado de la Mesa a Ocupada
-      if (isTableOrder) {
-        const m = store.mesas.find(x => x.id === store.currentTable.id);
-        if (m) {
-          m.status = "ocupada";
-          m.activeTicket = store.ticketId;
-          m.total = store.activeOrder.total;
-          m.mozo = customerName;
-          m.time = '1 min';
-        } else {
-          const newTable = {
-            ...store.currentTable,
-            status: "ocupada",
-            activeTicket: store.ticketId,
-            mozo: customerName,
-            time: "1 min",
-            total: store.activeOrder.total
-          };
-          store.mesas.push(newTable);
-          store.currentTable = newTable;
-        }
-        store.currentTable.status = 'ocupada';
-      }
-
-      // 4. Formatear WhatsApp
       const itemsText = items.map(i => `• ${i.qty}x ${i.dish.nombre} (${i.dish.precio * i.qty} Bs)${i.note ? `\n  ↳ _Nota: ${i.note}_` : ''}`).join("\n");
       const orderLocation = isTableOrder ? store.currentTable.name : `Para Llevar / Delivery: ${takeawayAddress}`;
       const msg = `🍽️ *COMANDA RESTAURANTE RÍO CHICO* 🍽️\n🏷️ *Ticket:* ${store.ticketId}${isAddition ? ' _[ADICIÓN A LA MESA]_' : ''}\n👤 *Cliente:* ${customerName}\n📍 *Ubicación:* ${orderLocation}\n----------------------------------------\n${itemsText}\n• 1x Ensaladas de cortesía 🥗\n----------------------------------------\n💰 *Total:* ${totalPrice} Bs\n${notes ? `📝 *Nota:* ${notes}\n` : ''}\n⚠️ Modificaciones con ticket *${store.ticketId}* en 10 min.`;
-      
-      window.open(`https://wa.me/${store.config.telefono.replace(/[^0-9]/g, '')}?text=${encodeURIComponent(msg)}`, "_blank");
+      const whatsappUrl = `https://wa.me/${store.config.telefono.replace(/[^0-9]/g, '')}?text=${encodeURIComponent(msg)}`;
+      const whatsappWindow = window.open("about:blank", "_blank");
+      const button = document.getElementById("send-order-button");
+      button.disabled = true;
+      button.querySelector("span").textContent = "Guardando pedido...";
 
+      let orderRef;
+      try {
+        orderRef = firebaseDb.collection("orders").doc();
+        const order = {
+          ticket: store.ticketId,
+          mode: store.orderMode,
+          tableId: isTableOrder ? store.currentTable.id : null,
+          tableName: isTableOrder ? store.currentTable.name : "Para Llevar",
+          deliveryAddress: isTableOrder ? "" : takeawayAddress,
+          customerName,
+          notes,
+          total: totalPrice,
+          items: items.map(item => ({
+            dishId: item.dish.id,
+            nombre: item.dish.nombre,
+            qty: item.qty,
+            precio: item.dish.precio,
+            nota: item.note || "",
+            listo: false,
+            addition: isAddition
+          })),
+          status: "pendiente",
+          isAddition,
+          kdsArchived: false,
+          createdAt: firebase.firestore.FieldValue.serverTimestamp()
+        };
+        await orderRef.set(order);
+
+        const newOrder = {
+          ...order,
+          id: orderRef.id,
+          firestoreId: orderRef.id,
+          mesa: order.mode === "table" ? order.tableName : "Para Llevar",
+          tiempo: "Ahora",
+          items: order.items
+        };
+        store.comandas.unshift(newOrder);
+        if (isTableOrder) {
+          store.activeOrder = {
+            id: store.ticketId,
+            firestoreId: orderRef.id,
+            tableId: store.currentTable.id,
+            tableName: store.currentTable.name,
+            status: "pendiente",
+            time: "Ahora",
+            total: (isAddition ? currentActiveOrder.total : 0) + totalPrice,
+            items: [...(isAddition ? currentActiveOrder.items : []), ...order.items]
+          };
+          const table = store.mesas.find(item => item.id === store.currentTable.id);
+          if (table) {
+            table.status = "ocupada";
+            table.activeTicket = store.ticketId;
+            table.activeOrderId = orderRef.id;
+            table.total = store.activeOrder.total;
+          }
+          store.currentTable.status = "ocupada";
+        } else {
+          store.activeOrder = null;
+        }
+      } catch (error) {
+        if (whatsappWindow) whatsappWindow.close();
+        console.error("No se pudo guardar el pedido en Firestore:", error);
+        alert("No se pudo guardar el pedido. Revisa tu conexión e inténtalo nuevamente; el carrito se conservó.");
+        return;
+      } finally {
+        button.disabled = false;
+        button.querySelector("span").textContent = "Enviar Comanda a Cocina & WhatsApp";
+      }
+
+      if (whatsappWindow) {
+        whatsappWindow.location.href = whatsappUrl;
+      } else {
+        showToast("Pedido guardado; permite ventanas emergentes para abrir WhatsApp.");
+      }
       store.ticketId = generateTicketId();
       store.cart = {};
       closeOrderModal();
       updateCartUI();
       renderActiveOrderBanner();
       renderDishes();
-      showToast("¡Comanda enviada a Cocina KDS y WhatsApp!");
+      if (store.activeTab === "cocina") renderCocina();
+      showToast("¡Pedido guardado y enviado a Cocina!");
     }
 
     // ==========================================
@@ -3004,6 +3177,7 @@
 
     document.addEventListener("DOMContentLoaded", () => {
       initSystem();
+      initFirebase();
       lucide.createIcons();
     });
   </script>

@@ -1,0 +1,104 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function staffProfile() {
+      return get(/databases/$(database)/documents/staff/$(request.auth.uid));
+    }
+
+    function isStaff() {
+      return signedIn()
+        && exists(/databases/$(database)/documents/staff/$(request.auth.uid))
+        && staffProfile().data.active == true;
+    }
+
+    function isAdmin() {
+      return isStaff() && staffProfile().data.role == 'admin';
+    }
+
+    function validOrder() {
+      return request.resource.data.keys().hasOnly([
+          'ticket', 'mode', 'tableId', 'tableName', 'deliveryAddress',
+          'customerName', 'notes', 'total', 'items', 'status',
+          'isAddition', 'kdsArchived', 'createdAt'
+        ])
+        && request.resource.data.ticket is string
+        && request.resource.data.ticket.size() <= 20
+        && request.resource.data.mode in ['table', 'takeaway']
+        && request.resource.data.customerName is string
+        && request.resource.data.customerName.size() <= 100
+        && request.resource.data.notes is string
+        && request.resource.data.notes.size() <= 500
+        && request.resource.data.total is number
+        && request.resource.data.total >= 0
+        && request.resource.data.items is list
+        && request.resource.data.items.size() > 0
+        && request.resource.data.items.size() <= 50
+        && request.resource.data.status == 'pendiente'
+        && request.resource.data.isAddition is bool
+        && request.resource.data.kdsArchived == false
+        && request.resource.data.createdAt == request.time
+        && (
+          (request.resource.data.mode == 'table'
+            && request.resource.data.tableId is string
+            && request.resource.data.tableId.size() <= 80
+            && request.resource.data.tableName is string
+            && request.resource.data.tableName.size() <= 80
+            && request.resource.data.deliveryAddress == '')
+          ||
+          (request.resource.data.mode == 'takeaway'
+            && request.resource.data.tableId == null
+            && request.resource.data.tableName == 'Para Llevar'
+            && request.resource.data.deliveryAddress is string
+            && request.resource.data.deliveryAddress.size() > 0
+            && request.resource.data.deliveryAddress.size() <= 300)
+        );
+    }
+
+    match /staff/{uid} {
+      allow get: if signedIn() && (request.auth.uid == uid || isAdmin());
+      allow list: if isAdmin();
+      allow create, update, delete: if isAdmin();
+    }
+
+    match /orders/{orderId} {
+      allow create: if validOrder();
+      allow read: if isStaff();
+      allow update: if isStaff()
+        && request.resource.data.diff(resource.data).affectedKeys()
+          .hasOnly(['status', 'items', 'kdsArchived'])
+        && request.resource.data.status in [
+          'pendiente', 'en-fogones', 'servido', 'por-pagar', 'pagado'
+        ]
+        && request.resource.data.items is list
+        && request.resource.data.kdsArchived is bool;
+      allow delete: if isAdmin();
+    }
+
+    match /calls/{callId} {
+      allow create: if request.resource.data.keys().hasOnly([
+          'tableId', 'tableName', 'type', 'details', 'status', 'createdAt'
+        ])
+        && request.resource.data.tableId is string
+        && request.resource.data.tableName is string
+        && request.resource.data.type in ['mozo', 'cuenta']
+        && request.resource.data.details is string
+        && request.resource.data.details.size() <= 300
+        && request.resource.data.status == 'pendiente'
+        && request.resource.data.createdAt == request.time;
+      allow read: if isStaff();
+      allow update: if isStaff()
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status'])
+        && request.resource.data.status in ['pendiente', 'atendido'];
+      allow delete: if isAdmin();
+    }
+
+    match /tables/{tableId} {
+      allow read: if isStaff();
+      allow create, update, delete: if isStaff();
+    }
+  }
+}

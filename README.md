@@ -34,9 +34,29 @@ Aplicación móvil y catálogo digital interactivo de alta fidelidad con diseño
    - **Sincronización:** Conexión vía PapaParse con la hoja de Google Sheets en vivo (`https://docs.google.com/spreadsheets/d/1Kbk5U4fPVOYhcrNEOE9tBPQxR-hWZ1VcBoq-iwHQzX4/export?format=csv&gid=0`).
    - **Respaldo Local (Fallback Data):** Menú completo offline con los 48 platos y bebidas tradicionales de Tarija en caso de fallo de red.
 
-### ⚠️ Limitación de sincronización de pedidos
+### 🔥 Sincronización Firebase
 
-La versión web mantiene mesas y comandas en memoria del navegador; la app Expo mantiene estados separados en cada pantalla. No hay un backend compartido, por lo que los pedidos enviados desde Expo abren WhatsApp pero no aparecen automáticamente en el KDS web ni se sincronizan entre dispositivos. Para operar la cocina en varios dispositivos hace falta conectar ambas versiones a un servicio de pedidos compartido.
+La versión web y el KDS usan Firebase Authentication y Cloud Firestore para sincronizar pedidos, mesas y solicitudes en tiempo real. La app Expo aún no está conectada a Firebase: los pedidos que se envían desde Expo no aparecen en el KDS.
+
+#### Preparar el proyecto Firebase
+
+1. En Firebase Console, habilita **Authentication > Sign-in method > Correo electrónico/contraseña**.
+2. En **Authentication > Settings > Authorized domains**, agrega el dominio publicado de la aplicación (por ejemplo, `rio-chico-menu.vercel.app`). `localhost` se usa para desarrollo local.
+3. Publica las reglas de este repositorio: abre `firestore.rules`, copia todo su contenido y pégalo en **Firestore Database > Rules** en Firebase Console. Pulsa **Publicar**.
+4. En **Authentication > Users**, agrega la primera cuenta de administrador con correo y contraseña.
+5. Copia su UID y, en **Firestore Database > Data**, crea una colección `staff` y un documento cuyo ID sea exactamente ese UID. Agrega estos campos:
+
+   | Campo | Tipo | Valor |
+   |---|---|---|
+   | `name` | string | Nombre del administrador |
+   | `email` | string | El correo de la cuenta |
+   | `role` | string | `admin` |
+   | `active` | boolean | `true` |
+
+   El primer perfil se crea manualmente porque solo un administrador existente puede crear perfiles de personal desde la aplicación. Para el resto del personal, crea cada cuenta en Authentication y después su perfil en `staff`, usando el rol `mozo` o `cajero`.
+6. Abre la aplicación y entra desde el acceso de personal con el correo y contraseña. Las cuentas y perfiles se administran en Firebase Console; la sección **Personal** de la aplicación solo muestra los perfiles sincronizados.
+
+La configuración del SDK web está en `firebase-config.js`; son identificadores públicos de la aplicación web. El acceso a los datos debe protegerse con las reglas de `firestore.rules`. No publiques claves de cuenta de servicio ni contraseñas.
 
 ---
 
@@ -69,6 +89,9 @@ Escanea el código QR desde la app **Expo Go** en tu iPhone o dispositivo Androi
 ```
 rio-chico-menu/
 ├── index.html                  # PWA / Aplicación Web Móvil Completa (Tailwind v4, Lucide, PapaParse)
+├── firebase-config.js          # Configuración pública del SDK web de Firebase
+├── firebase.json               # Ubicación de las reglas Firestore
+├── firestore.rules             # Reglas de acceso a pedidos, mesas y personal
 ├── manifest.json               # Manifiesto PWA para instalación en pantalla de inicio iOS/Android
 ├── server.js                   # Servidor local Node.js de alta velocidad (puerto 3000)
 ├── package.json                # Configuración de scripts del proyecto
