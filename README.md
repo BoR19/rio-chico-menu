@@ -24,7 +24,9 @@ Aplicación móvil y catálogo digital interactivo de alta fidelidad con diseño
    - Barra flotante en la parte inferior (`fixed bottom-4`) que aparece automáticamente al seleccionar platos.
    - **Modal de Detalle / Modificación:** Permite ingresar notas específicas por plato (ej. *"Término medio"*, *"Sin vinagre"*), seleccionar entre **Mesa en Salón** (con número de mesa) o **Para Llevar / Delivery Tarija**, y notas para cocina.
    - **Sistema de Tickets Únicos (`#RC-XXXX`):** Genera un código aleatorio de 4 dígitos para identificar cada comanda.
-   - **Envío y edición en cocina:** Guarda las comandas en Firestore y permite actualizar el pedido de una mesa con el mismo ticket, sin crear una comanda nueva ni vaciar el carrito.
+   - **Adiciones a una comanda:** Guarda las comandas en Firestore y permite agregar productos al ticket activo de una mesa. Cada envío queda vinculado al mismo ticket y, al enviarlo, solo se vacía el carrito de esa mesa.
+   - **Carrito independiente por mesa:** El personal puede cambiar de mesa sin mezclar ni perder productos pendientes; cada borrador se conserva localmente por mesa y se recupera al volver a seleccionarla.
+   - **Cuenta y cobro de mesa:** Consulta el consumo consolidado, revisa el detalle de platos y bebidas y confirma el pago en efectivo o por QR. Las adiciones se bloquean mientras la cuenta está en proceso de cobro.
    - **Estados sincronizados en tiempo real:** El cliente y el personal ven el avance `Pendiente → En Fogones → Servido → Por Pagar → Pagado`; archivar una tarjeta de cocina no elimina el seguimiento de la mesa.
 
 4. **Mesero Sommelier IA (Simulado / Modal):**
