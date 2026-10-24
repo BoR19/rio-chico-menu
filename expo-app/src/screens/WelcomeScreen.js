@@ -200,17 +200,17 @@ const styles = StyleSheet.create({
   },
   logoWrapper: {
     position: 'relative',
-    width: 170,
-    height: 170,
+    width: 200,
+    height: 200,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 16
   },
   logoGlow: {
     position: 'absolute',
-    width: 180,
-    height: 180,
-    borderRadius: 90,
+    width: 210,
+    height: 210,
+    borderRadius: 105,
     backgroundColor: 'rgba(249, 115, 22, 0.32)',
     filter: 'blur(20px)'
   },

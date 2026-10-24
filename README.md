@@ -25,6 +25,7 @@ Aplicación móvil y catálogo digital interactivo de alta fidelidad con diseño
    - **Modal de Detalle / Modificación:** Permite ingresar notas específicas por plato (ej. *"Término medio"*, *"Sin vinagre"*), seleccionar entre **Mesa en Salón** (con número de mesa) o **Para Llevar / Delivery Tarija**, y notas para cocina.
    - **Sistema de Tickets Únicos (`#RC-XXXX`):** Genera un código aleatorio de 4 dígitos para identificar cada comanda.
    - **Envío y edición en cocina:** Guarda las comandas en Firestore y permite actualizar el pedido de una mesa con el mismo ticket, sin crear una comanda nueva ni vaciar el carrito.
+   - **Estados sincronizados en tiempo real:** El cliente y el personal ven el avance `Pendiente → En Fogones → Servido → Por Pagar → Pagado`; archivar una tarjeta de cocina no elimina el seguimiento de la mesa.
 
 4. **Mesero Sommelier IA (Simulado / Modal):**
    - Sugerencias automáticas de maridaje con vinos tarijeños (Terruño, Kohlberg, Aranjuez, Vino Patero artesanal), especialidades a la cruz (Lechón, Costillar) y combos familiares con botón directo para añadir la sugerencia al carrito.

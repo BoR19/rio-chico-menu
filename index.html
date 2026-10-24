@@ -120,13 +120,13 @@
     <div class="relative z-10 px-6 py-4 flex flex-col items-center text-center max-w-lg mx-auto w-full">
       <div class="relative mb-3 group cursor-pointer animate-fade-up" onclick="triggerHaptic()">
         <div class="absolute -inset-4 bg-orange-500/25 rounded-full blur-2xl group-hover:bg-orange-500/40 transition-all"></div>
-        <div class="relative w-36 h-36 md:w-40 md:h-40 flex items-center justify-center">
+        <div class="relative w-44 h-44 md:w-48 md:h-48 flex items-center justify-center">
           <img
             id="hero-brand-logo"
             src="assets/rio_chico_orange_glow.png"
             alt="Logo Río Chico"
             class="w-full h-full object-contain filter drop-shadow-[0_0_28px_rgba(249,115,22,0.7)]"
-            onerror="renderSvgEmblemFallback(this, 150)"
+            onerror="renderSvgEmblemFallback(this, 190)"
           />
         </div>
       </div>
@@ -178,7 +178,7 @@
       <div id="staff-calls-banner" class="hidden bg-gradient-to-r from-red-600 to-amber-600 px-4 py-2 text-white text-xs flex items-center justify-between border-b border-white/20">
         <div class="flex items-center gap-2 font-bold truncate">
           <span class="text-base animate-bounce">🔔</span>
-          <span id="staff-calls-text">Mesa 04 solicita Mozo</span>
+          <span id="staff-calls-text">Mesa 01 solicita Mozo</span>
         </div>
         <button onclick="resolveTopCall()" class="px-2.5 py-1 rounded-lg bg-black/30 hover:bg-black/50 text-[11px] font-extrabold uppercase tracking-wide border border-white/30 whitespace-nowrap">
           ✓ Atendido
@@ -204,7 +204,7 @@
               <span class="inline-block w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span>
             </h2>
             <div class="flex items-center gap-1.5">
-              <span id="header-mesa-indicator" class="text-[11px] text-amber-400 font-bold">Mesa 04</span>
+              <span id="header-mesa-indicator" class="text-[11px] text-amber-400 font-bold">Mesa 01</span>
               <span class="text-[10px] text-stone-500">• Tarija</span>
             </div>
           </div>
@@ -823,7 +823,7 @@
           <span class="text-xl">💳</span>
           <div>
             <h4 class="font-bold text-sm text-white">Solicitar la Cuenta</h4>
-            <p id="bill-mesa-label" class="text-xs text-amber-400 font-bold">Mesa 04</p>
+            <p id="bill-mesa-label" class="text-xs text-amber-400 font-bold">Mesa 01</p>
           </div>
         </div>
         <button onclick="closeBillModal()" class="text-stone-400 hover:text-white">✕</button>
@@ -893,14 +893,14 @@
   <div id="mesa-qr-modal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-stone-950/85 backdrop-blur-md transition-opacity duration-300 opacity-0 pointer-events-none">
     <div class="bg-stone-900 border border-stone-800 w-full max-w-sm rounded-3xl p-5 shadow-2xl space-y-4 text-center">
       <div class="flex justify-between items-center border-b border-stone-800 pb-2">
-        <h4 class="font-bold text-sm text-white" id="qr-modal-title">Código QR - Mesa 04</h4>
+        <h4 class="font-bold text-sm text-white" id="qr-modal-title">Código QR - Mesa 01</h4>
         <button onclick="closeMesaQrModal()" class="text-stone-400">✕</button>
       </div>
 
       <!-- Contenedor Listo para Impresión -->
       <div id="qr-print-area" class="p-4 bg-white text-stone-950 rounded-2xl space-y-2">
         <div class="text-xs font-black uppercase tracking-wider text-amber-700">RESTAURANTE RÍO CHICO</div>
-        <div id="qr-print-mesa-name" class="text-lg font-black">MESA 04</div>
+        <div id="qr-print-mesa-name" class="text-lg font-black">MESA 01</div>
         <div class="w-44 h-44 mx-auto p-1 border-2 border-stone-950 rounded-xl">
           <img id="qr-modal-image" src="" alt="QR Mesa" class="w-full h-full object-contain" />
         </div>
@@ -1105,7 +1105,7 @@
           <div class="grid grid-cols-2 gap-2">
             <button type="button" id="btn-mode-table" onclick="setOrderMode('table')" class="py-2.5 px-3 rounded-xl border text-xs font-semibold flex items-center justify-center gap-1.5 transition-all bg-amber-500/20 border-amber-500 text-amber-300 shadow-sm">
               <i data-lucide="utensils-crossed" class="w-4 h-4"></i>
-              <span>En Mesa (<span id="order-mode-mesa-name">Mesa 04</span>)</span>
+              <span>En Mesa (<span id="order-mode-mesa-name">Mesa 01</span>)</span>
             </button>
             <button type="button" id="btn-mode-takeaway" onclick="setOrderMode('takeaway')" class="py-2.5 px-3 rounded-xl border border-stone-800 text-xs font-semibold flex items-center justify-center gap-1.5 transition-all bg-stone-900 text-stone-400">
               <i data-lucide="package" class="w-4 h-4"></i>
@@ -1185,6 +1185,9 @@
     let unsubscribeTables = null;
     let unsubscribeCalls = null;
     let unsubscribeStaff = null;
+    let unsubscribeGuestOrders = null;
+    let latestFirestoreOrders = [];
+    let hasLoadedFirestoreOrders = false;
 
     const store = {
       // 1. Identidad y Configuración de Marca (Colección configuracion/perfil)
@@ -1203,8 +1206,8 @@
 
       // 3. Mesa Actual del Comensal (Detectada por URL ?mesa=X o default)
       currentTable: {
-        id: "m_4",
-        name: "Mesa 04",
+        id: "m_1",
+        name: "Mesa 01",
         seats: 4,
         status: "libre"
       },
@@ -1296,7 +1299,7 @@
             id: `m_qr_${normalizedMesa.replace(/[^a-z0-9]+/g, '_')}`,
             name: `Mesa ${mesaParam}`,
             seats: 4,
-            status: "ocupada",
+            status: "libre",
             zona: "Mesa QR",
             activeTicket: "",
             mozo: "",
@@ -1393,70 +1396,73 @@
       }
     }
 
-    async function restoreGuestOrder(user) {
+    function restoreGuestOrder(user) {
+      if (unsubscribeGuestOrders) unsubscribeGuestOrders();
+      unsubscribeGuestOrders = null;
+
       try {
-        const localOrder = getCurrentTableActiveOrder();
-        const ordersSnapshot = await firebaseDb.collection("orders")
+        unsubscribeGuestOrders = firebaseDb.collection("orders")
           .where("customerUid", "==", user.uid)
-          .get();
-        const activeOrderSnapshot = ordersSnapshot.docs
-          .filter(doc => {
-            const order = doc.data();
-            return order.mode === "table" &&
-              order.tableId === store.currentTable.id &&
-              order.status !== "pagado" &&
-              order.kdsArchived !== true;
-          })
-          .sort((a, b) => (b.data().createdAt?.seconds || 0) - (a.data().createdAt?.seconds || 0))[0];
+          .onSnapshot(ordersSnapshot => {
+            const activeOrderSnapshot = ordersSnapshot.docs
+              .filter(doc => {
+                const order = doc.data();
+                return order.mode === "table" &&
+                  order.tableId === store.currentTable.id &&
+                  order.status !== "pagado";
+              })
+              .sort((a, b) => (b.data().createdAt?.seconds || 0) - (a.data().createdAt?.seconds || 0))[0];
 
-        if (!activeOrderSnapshot) {
-          localStorage.removeItem(getLocalOrderStorageKey(store.currentTable.id));
-          store.activeOrder = null;
-          store.cart = {};
-          store.ticketId = generateTicketId();
-          updateCartUI();
-          renderDishes();
-          renderActiveOrderBanner();
-          return;
-        }
+            if (!activeOrderSnapshot) {
+              localStorage.removeItem(getLocalOrderStorageKey(store.currentTable.id));
+              store.activeOrder = null;
+              store.cart = {};
+              store.ticketId = generateTicketId();
+              updateCartUI();
+              renderDishes();
+              renderActiveOrderBanner();
+              return;
+            }
 
-        const order = activeOrderSnapshot.data();
-        const hasMatchingLocalCart = localOrder &&
-          localOrder.customerUid === user.uid &&
-          localOrder.firestoreId === activeOrderSnapshot.id &&
-          localOrder.cart;
-        store.activeOrder = {
-          ...order,
-          id: order.ticket,
-          firestoreId: activeOrderSnapshot.id,
-          tableId: order.tableId,
-          tableName: order.tableName,
-          status: order.status,
-          total: order.total,
-          items: order.items
-        };
-        store.ticketId = order.ticket;
-        if (hasMatchingLocalCart) {
-          store.cart = localOrder.cart;
-        } else {
-          store.cart = Object.fromEntries((order.items || []).map(item => {
-            const dish = store.dishes.find(menuDish => menuDish.id === item.dishId) || {
-              id: item.dishId,
-              nombre: item.nombre,
-              precio: item.precio,
-              categoria: "Otros",
-              descripcion: ""
+            const order = activeOrderSnapshot.data();
+            const currentOrder = getCurrentTableActiveOrder();
+            const hasMatchingCart = currentOrder &&
+              currentOrder.customerUid === user.uid &&
+              currentOrder.firestoreId === activeOrderSnapshot.id;
+            store.activeOrder = {
+              ...order,
+              id: order.ticket,
+              firestoreId: activeOrderSnapshot.id,
+              tableId: order.tableId,
+              tableName: order.tableName,
+              status: order.status,
+              total: order.total,
+              items: order.items
             };
-            return [item.dishId, { dish, qty: item.qty, note: item.nota || "" }];
-          }));
-        }
-        persistLocalActiveOrder();
-        updateCartUI();
-        renderDishes();
-        renderActiveOrderBanner();
+            store.ticketId = order.ticket;
+            if (!hasMatchingCart) {
+              store.cart = Object.fromEntries((order.items || []).map(item => {
+                const dish = store.dishes.find(menuDish => menuDish.id === item.dishId) || {
+                  id: item.dishId,
+                  nombre: item.nombre,
+                  precio: item.precio,
+                  categoria: "Otros",
+                  descripcion: ""
+                };
+                return [item.dishId, { dish, qty: item.qty, note: item.nota || "" }];
+              }));
+            }
+            persistLocalActiveOrder();
+            updateCartUI();
+            renderDishes();
+            renderActiveOrderBanner();
+          }, error => {
+            console.error("No se pudo sincronizar el estado de la comanda:", error);
+            showToast("No se pudo actualizar el estado de tu comanda.");
+          });
       } catch (error) {
-        console.error("No se pudo validar la comanda guardada:", error);
-        showToast("No se pudo validar la comanda guardada. Revisa tu conexión.");
+        console.error("No se pudo iniciar el seguimiento de la comanda:", error);
+        showToast("No se pudo iniciar el seguimiento de tu comanda.");
       }
     }
 
@@ -1513,10 +1519,14 @@
       if (unsubscribeTables) unsubscribeTables();
       if (unsubscribeCalls) unsubscribeCalls();
       if (unsubscribeStaff) unsubscribeStaff();
+      if (unsubscribeGuestOrders) unsubscribeGuestOrders();
       unsubscribeOrders = null;
       unsubscribeTables = null;
       unsubscribeCalls = null;
       unsubscribeStaff = null;
+      unsubscribeGuestOrders = null;
+      latestFirestoreOrders = [];
+      hasLoadedFirestoreOrders = false;
       store.comandas = [];
       store.activeOrder = null;
       store.llamadas = [];
@@ -1556,6 +1566,7 @@
           const remoteTables = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }));
           store.mesas = remoteTables;
           if (store.activeTab === "mesas") renderMesas();
+          if (hasLoadedFirestoreOrders) syncTablesFromOrders(latestFirestoreOrders);
         }, error => {
           console.error("Error escuchando mesas en Firestore:", error);
           showToast("No se pudieron sincronizar las mesas.");
@@ -1593,8 +1604,10 @@
 
         unsubscribeOrders = firebaseDb.collection("orders").onSnapshot(snapshot => {
           const orders = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }));
+          latestFirestoreOrders = orders;
+          hasLoadedFirestoreOrders = true;
           store.comandas = orders
-            .filter(order => order.kdsArchived !== true && order.status !== "pagado")
+            .filter(order => order.kdsArchived !== true && !["por-pagar", "pagado"].includes(order.status))
             .map(order => ({
               ...order,
               firestoreId: order.id,
@@ -1631,7 +1644,7 @@
           renderActiveOrderBanner();
           if (store.activeTab === "cocina") renderCocina();
           if (store.activeTab === "mesas") renderMesas();
-          syncTablesFromOrders(store.comandas);
+          syncTablesFromOrders(orders);
         }, error => {
           console.error("Error escuchando pedidos en Firestore:", error);
           showToast("No se pudieron sincronizar los pedidos.");
@@ -1653,19 +1666,38 @@
           }
         });
 
-      for (const [tableId, order] of latestByTable) {
-        const table = store.mesas.find(item => item.id === tableId);
-        if (!table || table.activeOrderId === order.id || !store.staffSession.uid) continue;
+      if (!store.staffSession.uid || !hasLoadedFirestoreOrders) return;
+
+      for (const table of store.mesas) {
+        const order = latestByTable.get(table.id);
+        const nextState = order
+          ? {
+              status: order.status === "por-pagar" ? "por-pagar" : "ocupada",
+              activeTicket: order.ticket,
+              activeOrderId: order.id,
+              total: orders
+                .filter(item => item.tableId === table.id && item.status !== "pagado")
+                .reduce((sum, item) => sum + (Number(item.total) || 0), 0)
+            }
+          : table.activeOrderId
+            ? {
+                status: "libre",
+                activeTicket: "",
+                activeOrderId: "",
+                mozo: "",
+                time: "",
+                total: 0
+              }
+            : null;
+
+        if (!nextState || !Object.entries(nextState).some(([key, value]) => table[key] !== value)) continue;
+
         try {
-          await firebaseDb.collection("tables").doc(tableId).set({
+          await firebaseDb.collection("tables").doc(table.id).set({
             ...table,
-            status: order.status === "por-pagar" ? "por-pagar" : "ocupada",
-            activeTicket: order.ticket,
-            activeOrderId: order.id,
-            total: orders
-              .filter(item => item.tableId === tableId && item.status !== "pagado")
-              .reduce((sum, item) => sum + (Number(item.total) || 0), 0)
+            ...nextState
           });
+          Object.assign(table, nextState);
         } catch (error) {
           console.error(`No se pudo actualizar ${table.name}:`, error);
         }
@@ -2104,15 +2136,15 @@
                 <div class="mt-3 p-2.5 rounded-xl bg-stone-950/80 border border-stone-800 space-y-1 text-xs">
                   <div class="flex justify-between font-mono">
                     <span class="text-stone-400">Ticket:</span>
-                    <strong class="text-amber-400">${m.activeTicket || '#RC-8421'}</strong>
+                    <strong class="text-amber-400">${m.activeTicket || 'Sin comanda'}</strong>
                   </div>
                   <div class="flex justify-between">
                     <span class="text-stone-400">Consumo:</span>
-                    <strong class="text-white">${m.total || 119} Bs</strong>
+                    <strong class="text-white">${m.total ?? 0} Bs</strong>
                   </div>
                   <div class="flex justify-between">
                     <span class="text-stone-400">Mozo:</span>
-                    <span>${m.mozo || 'Carlos M.'} (${m.time || '28 min'})</span>
+                    <span>${m.mozo || 'Sin asignar'} (${m.time || '—'})</span>
                   </div>
                 </div>
               ` : `
@@ -2160,7 +2192,8 @@
         const updated = {
           ...m,
           status: "ocupada",
-          activeTicket: generateTicketId(),
+          activeTicket: "",
+          activeOrderId: "",
           mozo: store.staffSession.user,
           time: "1 min",
           total: 0
@@ -2386,7 +2419,7 @@
         try {
           await firebaseDb.collection("orders").doc(cmd.firestoreId).update({ status: newStatus });
           cmd.status = newStatus;
-          if (store.activeOrder && store.activeOrder.id === cmd.ticket) {
+          if (store.activeOrder && store.activeOrder.firestoreId === cmd.firestoreId) {
             store.activeOrder.status = newStatus;
             renderActiveOrderBanner();
           }
