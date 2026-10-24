@@ -902,6 +902,75 @@
   </div>
 
 
+  <!-- MODAL: COBRO Y CIERRE DE CUENTA PARA PERSONAL -->
+  <div id="staff-bill-modal" class="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-stone-950/85 backdrop-blur-md transition-opacity duration-300 opacity-0 pointer-events-none">
+    <div class="bg-stone-900 border border-stone-800 w-full max-w-lg max-h-[92vh] overflow-y-auto rounded-t-2xl sm:rounded-2xl p-4 sm:p-5 shadow-2xl safe-bottom">
+      <div class="flex items-center justify-between gap-3 border-b border-stone-800 pb-3">
+        <div class="flex min-w-0 items-center gap-2.5">
+          <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-emerald-500/15 text-emerald-400"><i data-lucide="receipt" class="h-5 w-5"></i></span>
+          <div class="min-w-0">
+            <h3 class="text-sm font-bold text-white">Cuenta de la mesa</h3>
+            <p id="staff-bill-table-name" class="truncate text-[11px] text-stone-400"></p>
+          </div>
+        </div>
+        <button onclick="closeStaffBillModal()" class="p-2 text-stone-400 hover:text-white" aria-label="Cerrar cuenta">✕</button>
+      </div>
+
+      <div class="mt-3 flex items-center gap-3 rounded-lg border border-stone-800 bg-stone-950 p-3">
+        <label for="staff-bill-table-selector" class="shrink-0 text-xs text-stone-400">Mesa</label>
+        <select id="staff-bill-table-selector" onchange="changeStaffBillTable(this.value)" class="min-w-0 flex-1 rounded-lg border border-stone-700 bg-stone-900 px-3 py-2 text-xs font-bold text-amber-300 focus:outline-none focus:border-amber-500"></select>
+      </div>
+
+      <div class="mt-3 rounded-xl border border-stone-800 bg-stone-950 p-3">
+        <div class="flex items-end justify-between gap-3">
+          <div>
+            <p class="text-[10px] font-bold uppercase text-stone-500">Consumo total de la cuenta</p>
+            <p id="staff-bill-summary-table" class="mt-1 text-xs font-semibold text-stone-200"></p>
+          </div>
+          <div class="text-right">
+            <p id="staff-bill-total" class="text-xl font-black text-amber-400">0 Bs</p>
+            <p id="staff-bill-item-count" class="text-[10px] text-stone-500">0 productos</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="mt-4">
+        <h4 class="mb-2 text-[10px] font-bold uppercase text-stone-500">Detalle de platos y bebidas</h4>
+        <div id="staff-bill-items" class="max-h-44 space-y-2 overflow-y-auto pr-1"></div>
+      </div>
+
+      <div class="mt-4 border-t border-stone-800 pt-3">
+        <div class="grid grid-cols-2 gap-2 rounded-lg bg-stone-950 p-1">
+          <button id="staff-pay-cash-button" onclick="selectStaffPayMethod('cash')" class="rounded-md bg-emerald-600 px-3 py-2 text-xs font-bold text-white" aria-pressed="true">Efectivo</button>
+          <button id="staff-pay-qr-button" onclick="selectStaffPayMethod('qr')" class="rounded-md px-3 py-2 text-xs font-bold text-stone-400" aria-pressed="false">QR</button>
+        </div>
+
+        <div id="staff-cash-payment-box" class="mt-3 space-y-2 rounded-xl border border-stone-800 bg-stone-950 p-3">
+          <div class="flex items-center justify-between gap-2 text-xs">
+            <span class="font-semibold text-stone-300">Cobro en efectivo</span>
+            <span id="staff-cash-total-label" class="font-bold text-amber-400"></span>
+          </div>
+          <label for="staff-cash-amount" class="block text-[11px] text-stone-500">Monto recibido en Bs</label>
+          <input id="staff-cash-amount" type="number" min="0" step="1" inputmode="numeric" oninput="calculateStaffChange()" class="w-full rounded-lg border border-stone-700 bg-stone-900 px-3 py-2.5 text-sm font-bold text-white focus:outline-none focus:border-amber-500" placeholder="Monto recibido" />
+          <div class="flex flex-wrap gap-2">
+            <button onclick="setStaffCashAmount('exact')" class="rounded-md border border-emerald-500/40 px-2.5 py-1 text-[10px] font-semibold text-emerald-300">Exacto</button>
+            <button onclick="setStaffCashAmount('next')" class="rounded-md border border-stone-700 px-2.5 py-1 text-[10px] font-semibold text-stone-300">Siguiente Bs 50</button>
+          </div>
+          <p id="staff-cash-change" class="text-right text-xs font-bold text-stone-400">Cambio: --</p>
+        </div>
+
+        <div id="staff-qr-payment-box" class="hidden mt-3 rounded-xl border border-stone-800 bg-stone-950 p-3 text-xs leading-relaxed text-stone-300">
+          Verifica en la aplicación bancaria que el pago por <strong id="staff-qr-total" class="text-amber-300"></strong> fue recibido antes de confirmar.
+        </div>
+
+        <button id="staff-bill-confirm-button" onclick="confirmStaffBill()" class="mt-3 w-full rounded-lg bg-emerald-600 py-3 text-sm font-bold text-white hover:bg-emerald-500 disabled:cursor-not-allowed disabled:opacity-50">
+          Confirmar pago en efectivo
+        </button>
+      </div>
+    </div>
+  </div>
+
+
   <!-- MODAL: GENERADOR E IMPRESIÓN DE CÓDIGO QR PARA MESAS -->
   <div id="mesa-qr-modal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-stone-950/85 backdrop-blur-md transition-opacity duration-300 opacity-0 pointer-events-none">
     <div class="bg-stone-900 border border-stone-800 w-full max-w-sm rounded-3xl p-5 shadow-2xl space-y-4 text-center">
@@ -1244,6 +1313,8 @@
       mesasFilter: "all",
       selectedStaffTableId: "",
       staffOrderTableId: "",
+      staffBillingTableId: "",
+      staffPayMethod: "cash",
       cocinaFilter: "all",
       adminSubTab: "inventario",
       payMethod: "cash"
@@ -2216,6 +2287,15 @@
         return;
       }
 
+      const ticketGroups = new Map();
+      orders.forEach(order => {
+        const ticket = order.ticket || "Sin ticket";
+        const summary = ticketGroups.get(ticket) || { statuses: new Map(), batches: 0 };
+        summary.statuses.set(order.status || "pendiente", (summary.statuses.get(order.status || "pendiente") || 0) + 1);
+        summary.batches += 1;
+        ticketGroups.set(ticket, summary);
+      });
+
       const itemTotals = new Map();
       orders.forEach(order => (order.items || []).forEach(item => {
         const name = item.nombre || "Plato";
@@ -2229,7 +2309,10 @@
 
       detail.innerHTML = `
         <div class="mb-2 flex flex-wrap gap-2 text-[11px] text-stone-400">
-          ${orders.map(order => `<span class="rounded-md border border-stone-800 px-2 py-1">${escapeHtml(order.ticket || "Sin ticket")} · ${escapeHtml(order.status || "pendiente")}</span>`).join("")}
+          ${Array.from(ticketGroups.entries()).map(([ticket, summary]) => {
+            const statuses = Array.from(summary.statuses.entries()).map(([status, count]) => `${status} ×${count}`).join(" · ");
+            return `<span class="rounded-md border border-stone-800 px-2 py-1">${escapeHtml(ticket)} · ${summary.batches} envíos · ${escapeHtml(statuses)}</span>`;
+          }).join("")}
         </div>
         <div class="divide-y divide-stone-800">
           ${Array.from(itemTotals.values()).map(item => `
@@ -2390,42 +2473,184 @@
       }
     }
 
-    async function cobrarYLiberarMesa(mesaId) {
-      triggerHaptic(25);
-      const m = store.mesas.find(x => x.id === mesaId);
-      if (m) {
-        const total = latestFirestoreOrders
-          .filter(order => order.tableId === mesaId && order.status !== "pagado")
-          .reduce((sum, order) => sum + (Number(order.total) || 0), 0);
-        if (!window.confirm(`¿Confirmas el cobro de ${m.name} por ${total} Bs y liberar la mesa?`)) return;
-        try {
-          const orders = await firebaseDb.collection("orders").where("tableId", "==", mesaId).get();
-          const batch = firebaseDb.batch();
-          orders.docs.forEach(order => {
-            if (order.data().status !== "pagado") batch.update(order.ref, { status: "pagado" });
-          });
-          batch.set(firebaseDb.collection("tables").doc(mesaId), {
-            ...m,
-            status: "libre",
-            activeTicket: "",
-            activeOrderId: "",
-            mozo: "",
-            time: "",
-            total: 0
-          });
-          await batch.commit();
-          Object.assign(m, { status: "libre", activeTicket: "", activeOrderId: "", mozo: "", time: "", total: 0 });
-          store.selectedStaffTableId = "";
-          store.activeOrder = null;
-          store.llamadas = store.llamadas.filter(l => l.tableId !== mesaId);
-          renderMesas();
-          renderActiveOrderBanner();
-          renderStaffCallsBanner();
-          showToast(`${m.name} cobrada y liberada.`);
-        } catch (error) {
-          console.error("No se pudo liberar la mesa:", error);
-          alert("No se pudo cerrar la comanda en Firestore.");
+    function cobrarYLiberarMesa(mesaId) {
+      openStaffBillModal(mesaId);
+    }
+
+    function openStaffBillModal(tableId) {
+      const table = store.mesas.find(item => item.id === tableId);
+      const orders = latestFirestoreOrders.filter(order =>
+        order.mode === "table" && order.tableId === tableId && order.status !== "pagado"
+      );
+      if (!table || !orders.length) {
+        showToast("Esta mesa no tiene una cuenta pendiente.");
+        return;
+      }
+
+      store.staffBillingTableId = tableId;
+      store.selectedStaffTableId = tableId;
+      const total = orders.reduce((sum, order) => sum + (Number(order.total) || 0), 0);
+      const itemTotals = new Map();
+      orders.forEach(order => (order.items || []).forEach(item => {
+        const name = item.nombre || "Producto";
+        const note = item.nota || "";
+        const price = Number(item.precio) || 0;
+        const key = `${name}|${note}|${price}`;
+        const entry = itemTotals.get(key) || { name, note, price, qty: 0 };
+        entry.qty += Number(item.qty) || 0;
+        itemTotals.set(key, entry);
+      }));
+
+      const selector = document.getElementById("staff-bill-table-selector");
+      selector.innerHTML = store.mesas.map(item =>
+        `<option value="${escapeHtml(item.id)}">${escapeHtml(item.name)}</option>`
+      ).join("");
+      selector.value = tableId;
+      document.getElementById("staff-bill-table-name").textContent = table.name;
+      document.getElementById("staff-bill-summary-table").textContent = table.name;
+      document.getElementById("staff-bill-total").textContent = `${total.toFixed(2)} Bs`;
+      document.getElementById("staff-cash-total-label").textContent = `Total: ${total.toFixed(2)} Bs`;
+      document.getElementById("staff-qr-total").textContent = `${total.toFixed(2)} Bs`;
+      document.getElementById("staff-bill-item-count").textContent = `${Array.from(itemTotals.values()).reduce((sum, item) => sum + item.qty, 0)} productos`;
+      document.getElementById("staff-bill-items").innerHTML = Array.from(itemTotals.values()).map(item => `
+        <div class="flex items-center justify-between gap-3 rounded-lg border border-stone-800 bg-stone-950 px-3 py-2 text-xs">
+          <div class="min-w-0"><p class="truncate font-semibold text-stone-200">${escapeHtml(item.name)}</p>${item.note ? `<p class="mt-0.5 text-[10px] text-stone-500">${escapeHtml(item.note)}</p>` : ""}</div>
+          <div class="shrink-0 text-right"><p class="font-bold text-amber-400">${(item.qty * item.price).toFixed(2)} Bs</p><p class="text-[10px] text-stone-500">${item.qty} × ${item.price.toFixed(2)} Bs</p></div>
+        </div>`).join("");
+
+      store.staffPayMethod = "cash";
+      document.getElementById("staff-cash-amount").value = "";
+      selectStaffPayMethod("cash");
+      calculateStaffChange();
+      document.getElementById("staff-bill-modal").classList.remove("opacity-0", "pointer-events-none");
+      lucide.createIcons();
+    }
+
+    function changeStaffBillTable(tableId) {
+      const hasPendingOrders = latestFirestoreOrders.some(order =>
+        order.mode === "table" && order.tableId === tableId && order.status !== "pagado"
+      );
+      if (!hasPendingOrders) {
+        document.getElementById("staff-bill-table-selector").value = store.staffBillingTableId;
+        showToast("La mesa seleccionada no tiene una cuenta pendiente.");
+        return;
+      }
+      openStaffBillModal(tableId);
+    }
+
+    function closeStaffBillModal() {
+      document.getElementById("staff-bill-modal").classList.add("opacity-0", "pointer-events-none");
+    }
+
+    function selectStaffPayMethod(method) {
+      store.staffPayMethod = method;
+      const cashButton = document.getElementById("staff-pay-cash-button");
+      const qrButton = document.getElementById("staff-pay-qr-button");
+      const isCash = method === "cash";
+      cashButton.className = isCash
+        ? "rounded-md bg-emerald-600 px-3 py-2 text-xs font-bold text-white"
+        : "rounded-md px-3 py-2 text-xs font-bold text-stone-400";
+      qrButton.className = isCash
+        ? "rounded-md px-3 py-2 text-xs font-bold text-stone-400"
+        : "rounded-md bg-emerald-600 px-3 py-2 text-xs font-bold text-white";
+      cashButton.setAttribute("aria-pressed", String(isCash));
+      qrButton.setAttribute("aria-pressed", String(!isCash));
+      document.getElementById("staff-cash-payment-box").classList.toggle("hidden", !isCash);
+      document.getElementById("staff-qr-payment-box").classList.toggle("hidden", isCash);
+      const confirmButton = document.getElementById("staff-bill-confirm-button");
+      confirmButton.textContent = isCash ? "Confirmar pago en efectivo" : "Confirmar pago QR";
+      calculateStaffChange();
+    }
+
+    function setStaffCashAmount(amountType) {
+      const tableId = store.staffBillingTableId;
+      const total = latestFirestoreOrders
+        .filter(order => order.tableId === tableId && order.status !== "pagado")
+        .reduce((sum, order) => sum + (Number(order.total) || 0), 0);
+      const amount = amountType === "exact" ? total : Math.ceil(total / 50) * 50;
+      document.getElementById("staff-cash-amount").value = amount.toFixed(2);
+      calculateStaffChange();
+    }
+
+    function calculateStaffChange() {
+      const total = latestFirestoreOrders
+        .filter(order => order.tableId === store.staffBillingTableId && order.status !== "pagado")
+        .reduce((sum, order) => sum + (Number(order.total) || 0), 0);
+      const amount = Number(document.getElementById("staff-cash-amount").value);
+      const display = document.getElementById("staff-cash-change");
+      if (!document.getElementById("staff-cash-amount").value) {
+        display.textContent = "Cambio: --";
+        display.className = "text-right text-xs font-bold text-stone-400";
+      } else if (amount < total) {
+        display.textContent = `Faltan ${(total - amount).toFixed(2)} Bs`;
+        display.className = "text-right text-xs font-bold text-red-400";
+      } else {
+        display.textContent = `Cambio: ${(amount - total).toFixed(2)} Bs`;
+        display.className = "text-right text-xs font-bold text-emerald-400";
+      }
+    }
+
+    async function confirmStaffBill() {
+      const tableId = store.staffBillingTableId;
+      const table = store.mesas.find(item => item.id === tableId);
+      const orders = latestFirestoreOrders.filter(order =>
+        order.mode === "table" && order.tableId === tableId && order.status !== "pagado"
+      );
+      if (!table || !orders.length) {
+        closeStaffBillModal();
+        showToast("La cuenta ya no tiene pedidos pendientes.");
+        return;
+      }
+
+      const total = orders.reduce((sum, order) => sum + (Number(order.total) || 0), 0);
+      if (store.staffPayMethod === "cash" && Number(document.getElementById("staff-cash-amount").value) < total) {
+        alert("El monto recibido no cubre el total de la cuenta.");
+        return;
+      }
+      if (store.staffPayMethod === "qr" && !window.confirm(`¿Verificaste el pago QR de ${total.toFixed(2)} Bs?`)) return;
+
+      const button = document.getElementById("staff-bill-confirm-button");
+      button.disabled = true;
+      button.textContent = "Registrando pago...";
+      try {
+        const snapshot = await firebaseDb.collection("orders").where("tableId", "==", tableId).get();
+        const unpaidOrders = snapshot.docs.filter(order => order.data().status !== "pagado");
+        if (!unpaidOrders.length) {
+          closeStaffBillModal();
+          showToast("La cuenta ya fue pagada.");
+          return;
         }
+        const batch = firebaseDb.batch();
+        unpaidOrders.forEach(order => batch.update(order.ref, {
+          status: "pagado",
+          paymentMethod: store.staffPayMethod
+        }));
+        batch.set(firebaseDb.collection("tables").doc(tableId), {
+          ...table,
+          status: "libre",
+          activeTicket: "",
+          activeOrderId: "",
+          mozo: "",
+          time: "",
+          total: 0
+        });
+        await batch.commit();
+        Object.assign(table, { status: "libre", activeTicket: "", activeOrderId: "", mozo: "", time: "", total: 0 });
+        store.selectedStaffTableId = "";
+        store.staffBillingTableId = "";
+        store.activeOrder = null;
+        store.llamadas = store.llamadas.filter(call => call.tableId !== tableId);
+        closeStaffBillModal();
+        renderMesas();
+        renderActiveOrderBanner();
+        renderStaffCallsBanner();
+        showToast(`${table.name} cobrada y liberada.`);
+      } catch (error) {
+        console.error("No se pudo registrar el cobro:", error);
+        alert("No se pudo cerrar la cuenta en Firestore.");
+      } finally {
+        button.disabled = false;
+        button.textContent = store.staffPayMethod === "cash" ? "Confirmar pago en efectivo" : "Confirmar pago QR";
       }
     }
 
@@ -2491,22 +2716,28 @@
     function groupKdsOrders(orders) {
       const groups = new Map();
       orders.forEach(order => {
-        const tableKey = order.tableId || order.mesa || order.mode || "pedido";
         const ticket = order.ticket || order.firestoreId || order.id;
-        const key = `${tableKey}::${ticket}`;
+        const key = order.tableId
+          ? `${order.tableId}::${ticket}`
+          : `${order.mode || "pedido"}::${order.id || order.firestoreId || ticket}`;
         if (!groups.has(key)) {
           groups.set(key, { key, ticket, mesa: order.mesa, orders: [] });
         }
         groups.get(key).orders.push(order);
       });
 
-      return Array.from(groups.values()).map(group => ({
-        ...group,
-        orders: group.orders.sort((a, b) => {
-          if (Boolean(a.isAddition) !== Boolean(b.isAddition)) return a.isAddition ? 1 : -1;
-          return (a.createdAt?.seconds || 0) - (b.createdAt?.seconds || 0);
-        })
-      }));
+      return Array.from(groups.values()).map(group => {
+        const sortByCreation = (a, b) => {
+          const aCreated = a.createdAt || {};
+          const bCreated = b.createdAt || {};
+          const timeDifference = (aCreated.seconds || 0) - (bCreated.seconds || 0) ||
+            (aCreated.nanoseconds || 0) - (bCreated.nanoseconds || 0);
+          return timeDifference || String(a.id || a.firestoreId).localeCompare(String(b.id || b.firestoreId));
+        };
+        const initialOrders = group.orders.filter(order => !order.isAddition).sort(sortByCreation);
+        const additions = group.orders.filter(order => order.isAddition).sort(sortByCreation);
+        return { ...group, orders: [...initialOrders, ...additions] };
+      });
     }
 
     function renderCocina() {

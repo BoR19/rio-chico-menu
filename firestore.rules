@@ -77,10 +77,12 @@ service cloud.firestore {
         || (signedIn() && resource.data.customerUid == request.auth.uid);
       allow update: if (isStaff()
         && request.resource.data.diff(resource.data).affectedKeys()
-          .hasOnly(['status', 'items', 'kdsArchived', 'total', 'notes', 'isAddition', 'customerName'])
+          .hasOnly(['status', 'items', 'kdsArchived', 'total', 'notes', 'isAddition', 'customerName', 'paymentMethod'])
         && request.resource.data.status in [
           'pendiente', 'en-fogones', 'servido', 'por-pagar', 'pagado'
         ]
+        && (!request.resource.data.keys().hasAny(['paymentMethod'])
+          || request.resource.data.paymentMethod in ['cash', 'qr'])
         && request.resource.data.items is list
         && request.resource.data.kdsArchived is bool
         && request.resource.data.total is number
