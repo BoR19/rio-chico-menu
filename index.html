@@ -80,6 +80,7 @@
     .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
 
     .safe-bottom { padding-bottom: env(safe-area-inset-bottom, 1rem); }
+    .safe-bottom-fixed { bottom: calc(env(safe-area-inset-bottom, 0px) + 1rem); }
     .safe-top { padding-top: env(safe-area-inset-top, 0.75rem); }
 
     /* Print styles for QR table generation */
@@ -188,7 +189,7 @@
       <div class="max-w-6xl mx-auto px-4 py-2.5 flex items-center justify-between gap-3">
         
         <!-- Logo & Mesa Badge -->
-        <div class="flex items-center gap-2.5 cursor-pointer" onclick="goToWelcomeScreen()">
+        <div class="flex items-center gap-2.5">
           <div class="w-9 h-9 rounded-xl overflow-hidden bg-stone-900 border border-amber-500/30 flex items-center justify-center p-1 shadow-md">
             <img
               id="header-brand-logo"
@@ -256,6 +257,7 @@
 
           <!-- Asistente Mesero IA -->
           <button
+            id="btn-ai-assistant"
             onclick="openAiAssistantModal()"
             class="px-2.5 py-1.5 rounded-full text-xs font-semibold bg-gradient-to-r from-amber-500/20 to-orange-500/20 text-amber-300 border border-amber-400/30 flex items-center gap-1 active:scale-95"
             title="Sommelier y sugerencias"
@@ -266,6 +268,7 @@
 
           <!-- Botón Inicio -->
           <button
+            id="btn-return-home"
             onclick="goToWelcomeScreen()"
             class="p-2 rounded-xl text-stone-400 hover:text-white bg-stone-900 border border-stone-800 text-xs"
             title="Volver a Portada"
@@ -303,25 +306,23 @@
             </div>
           </div>
 
-          <!-- Stepper Visual de 4 Fases estilo El Churo Mosito -->
-          <div class="flex items-center gap-1.5 self-center sm:self-auto text-[11px] font-bold">
-            <span id="step-1" class="px-2 py-1 rounded-lg bg-stone-800 text-stone-400">1. Pendiente</span>
-            <span class="text-stone-600">➔</span>
-            <span id="step-2" class="px-2 py-1 rounded-lg bg-amber-500/30 text-amber-300 border border-amber-500/40">2. En Fogones</span>
-            <span class="text-stone-600">➔</span>
-            <span id="step-3" class="px-2 py-1 rounded-lg bg-stone-800 text-stone-400">3. Servido</span>
-            <span class="text-stone-600">➔</span>
-            <span id="step-4" class="px-2 py-1 rounded-lg bg-stone-800 text-stone-400">4. Por Pagar</span>
+          <div id="order-status-progress" class="w-full max-w-40 self-center sm:max-w-28" role="progressbar" aria-label="Progreso de la comanda" aria-valuemin="0" aria-valuemax="100" aria-valuenow="25">
+            <div class="h-1.5 overflow-hidden rounded-full bg-stone-800">
+              <div id="order-status-progress-fill" class="h-full w-1/4 rounded-full bg-amber-400 transition-all duration-500"></div>
+            </div>
           </div>
 
           <!-- Botón de Adición rápida a la mesa -->
           <div class="flex items-center gap-2">
             <button onclick="scrollToMenuForAddition()" class="px-3 py-1.5 rounded-xl bg-amber-600 hover:bg-amber-500 text-white font-bold text-xs flex items-center gap-1 active:scale-95 shadow-sm">
               <i data-lucide="plus" class="w-3.5 h-3.5"></i>
-              <span>+ Adición a la Mesa</span>
+              <span>Agregar platos</span>
             </button>
-            <button onclick="openBillModal()" class="px-3 py-1.5 rounded-xl bg-emerald-600 text-white font-bold text-xs active:scale-95 shadow-sm">
-              Pedir Cuenta
+            <button onclick="callMozo()" class="p-2 rounded-lg border border-stone-700 text-stone-300 hover:text-white" aria-label="Llamar al mozo" title="Llamar al mozo">
+              <i data-lucide="bell" class="w-4 h-4"></i>
+            </button>
+            <button id="btn-request-bill" onclick="openBillModal()" class="px-3 py-1.5 rounded-xl bg-emerald-600 text-white font-bold text-xs active:scale-95 shadow-sm disabled:cursor-not-allowed disabled:opacity-50">
+              Pedir cuenta
             </button>
           </div>
         </div>
@@ -768,18 +769,18 @@
     id="floating-cart"
     type="button"
     onclick="openOrderModal()"
-    class="fixed bottom-20 left-4 right-4 z-30 mx-auto flex max-w-md items-center justify-between rounded-2xl border border-amber-500/40 bg-stone-950/95 px-4 py-3 text-left shadow-2xl transition-all duration-300 translate-y-36 opacity-0 pointer-events-none"
-    aria-label="Revisar pedido"
+    class="fixed bottom-20 left-4 right-4 z-30 mx-auto flex max-w-md items-center justify-between rounded-xl border border-amber-500/40 bg-stone-950/95 px-4 py-3 text-left shadow-2xl transition-all duration-300 translate-y-36 opacity-0 pointer-events-none"
+    aria-label="Abrir carrito"
   >
     <span class="flex items-center gap-3">
       <span class="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-orange-600 to-red-600 text-lg">🛍️</span>
       <span>
-        <span class="block text-[10px] font-extrabold tracking-wide text-amber-400">TU PEDIDO ACTUAL</span>
+        <span class="block text-[10px] font-extrabold tracking-wide text-amber-400">TU CARRITO</span>
         <span class="block text-sm font-black text-white"><span id="cart-total-price">0</span> Bs</span>
       </span>
     </span>
     <span class="flex items-center gap-2 rounded-xl bg-amber-600 px-3 py-2 text-xs font-bold text-white">
-      Revisar <span id="cart-badge-count" class="rounded-full bg-white px-1.5 py-0.5 text-[10px] text-stone-950">0</span>
+      Ver carrito <span id="cart-badge-count" class="rounded-full bg-white px-1.5 py-0.5 text-[10px] text-stone-950">0</span>
     </span>
   </button>
 
@@ -831,74 +832,65 @@
   </div>
 
 
-  <!-- MODAL: PEDIR CUENTA (Efectivo con calculadora de cambio o Pago QR) -->
-  <div id="bill-modal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-stone-950/85 backdrop-blur-md transition-opacity duration-300 opacity-0 pointer-events-none">
-    <div class="bg-stone-900 border border-stone-800 w-full max-w-sm rounded-3xl p-5 shadow-2xl space-y-4">
+  <!-- MODAL: SOLICITUD DE CUENTA -->
+  <div id="bill-modal" class="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-stone-950/85 backdrop-blur-md transition-opacity duration-300 opacity-0 pointer-events-none">
+    <div class="bg-stone-900 border border-stone-800 w-full max-w-md max-h-[90vh] overflow-y-auto rounded-t-2xl sm:rounded-2xl p-4 sm:p-5 shadow-2xl space-y-4 safe-bottom">
       <div class="flex items-center justify-between border-b border-stone-800 pb-3">
         <div class="flex items-center gap-2">
-          <span class="text-xl">💳</span>
+          <i data-lucide="receipt" class="w-5 h-5 text-emerald-400"></i>
           <div>
-            <h4 class="font-bold text-sm text-white">Solicitar la Cuenta</h4>
+            <h4 class="font-bold text-sm text-white">Pedir cuenta</h4>
             <p id="bill-mesa-label" class="text-xs text-amber-400 font-bold">Mesa 01</p>
           </div>
         </div>
-        <button onclick="closeBillModal()" class="text-stone-400 hover:text-white">✕</button>
+        <button onclick="closeBillModal()" class="p-2 text-stone-400 hover:text-white" aria-label="Cerrar solicitud de cuenta">✕</button>
       </div>
 
+      <p class="text-xs leading-relaxed text-stone-300">Avisaremos a caja. El personal acercará la cuenta y confirmará el pago contigo.</p>
+
       <!-- Resumen de Consumo -->
-      <div class="p-3 rounded-2xl bg-stone-950 border border-stone-800 flex justify-between items-baseline">
+      <div class="p-3 rounded-xl bg-stone-950 border border-stone-800 flex justify-between items-baseline">
         <span class="text-xs text-stone-400">Total acumulado:</span>
         <span class="text-xl font-black text-amber-400">
           <span id="bill-total-amount">119</span> <span class="text-xs">Bs</span>
         </span>
       </div>
 
-      <!-- Método de Pago -->
-      <div>
-        <label class="block text-xs font-semibold text-stone-300 mb-2">Selecciona Método de Pago:</label>
+      <div id="bill-payment-options" class="space-y-3">
+        <label class="block text-xs font-semibold text-stone-300">Forma de pago preferida</label>
         <div class="grid grid-cols-2 gap-2">
-          <button type="button" id="btn-pay-cash" onclick="selectPayMethod('cash')" class="p-2.5 rounded-xl border border-amber-500 bg-amber-500/20 text-amber-300 font-bold text-xs flex flex-col items-center gap-1">
-            <span class="text-lg">💵</span>
-            <span>Efectivo</span>
+          <button type="button" id="btn-pay-cash" onclick="selectPayMethod('cash')" class="p-3 rounded-xl border border-amber-500 bg-amber-500/15 text-amber-200 font-bold text-xs flex items-center justify-center gap-2" aria-pressed="true">
+            <i data-lucide="banknote" class="w-4 h-4"></i><span>Efectivo</span>
           </button>
-          <button type="button" id="btn-pay-qr" onclick="selectPayMethod('qr')" class="p-2.5 rounded-xl border border-stone-800 bg-stone-950 text-stone-400 font-bold text-xs flex flex-col items-center gap-1">
-            <span class="text-lg">📱</span>
-            <span>Pago por QR</span>
+          <button type="button" id="btn-pay-qr" onclick="selectPayMethod('qr')" class="p-3 rounded-xl border border-stone-800 bg-stone-950 text-stone-400 font-bold text-xs flex items-center justify-center gap-2" aria-pressed="false">
+            <i data-lucide="smartphone" class="w-4 h-4"></i><span>QR</span>
           </button>
+        </div>
+
+        <div id="cash-calculator-box" class="space-y-2 rounded-xl bg-stone-950 border border-stone-800 p-3">
+          <label for="cash-input-amount" class="block text-xs text-stone-400">¿Con cuánto pagarás? <span class="text-stone-500">Opcional</span></label>
+          <div class="relative">
+            <input id="cash-input-amount" type="number" min="0" step="1" inputmode="numeric" oninput="calculateChange(this.value)" placeholder="Ej. 200" class="w-full px-3.5 py-2 rounded-lg bg-stone-900 border border-stone-700 text-sm font-bold text-white focus:outline-none focus:border-amber-500" />
+            <span class="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-bold text-stone-400">Bs</span>
+          </div>
+          <div class="flex justify-between items-center text-xs pt-1">
+            <span class="text-stone-400">Cambio estimado:</span>
+            <span id="cash-change-display" class="font-extrabold text-sm text-stone-400">Se calcula en caja</span>
+          </div>
+        </div>
+
+        <div id="qr-payment-box" class="hidden rounded-xl border border-stone-800 bg-stone-950 p-3 text-xs leading-relaxed text-stone-300">
+          Caja te acercará el QR bancario para completar el pago. No compartas claves ni códigos de seguridad.
         </div>
       </div>
 
-      <!-- Calculadora de Cambio en Efectivo -->
-      <div id="cash-calculator-box" class="space-y-2 p-3 rounded-2xl bg-stone-950 border border-stone-800">
-        <label class="block text-xs text-stone-400">¿Con cuánto efectivo pagarás?</label>
-        <div class="relative">
-          <input
-            id="cash-input-amount"
-            type="number"
-            oninput="calculateChange(this.value)"
-            placeholder="Ej. 200"
-            class="w-full px-3.5 py-2 rounded-xl bg-stone-900 border border-stone-700 text-sm font-bold text-white focus:outline-none focus:border-amber-500"
-          />
-          <span class="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-bold text-stone-400">Bs</span>
-        </div>
-        <div class="flex justify-between items-center text-xs pt-1">
-          <span class="text-stone-400">Tu cambio a recibir:</span>
-          <span id="cash-change-display" class="font-extrabold text-sm text-emerald-400">0 Bs</span>
-        </div>
-      </div>
-
-      <!-- QR de Cobro Simple Bolivia -->
-      <div id="qr-payment-box" class="hidden p-3 rounded-2xl bg-stone-950 border border-stone-800 text-center space-y-2">
-        <p class="text-xs text-stone-300">Escanea con tu aplicación bancaria:</p>
-        <div class="w-36 h-36 mx-auto bg-white p-2 rounded-xl flex items-center justify-center">
-          <img src="https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=REST_RIO_CHICO_TARIJA_PAGO_SIMPLE" alt="QR Cobro" class="w-full h-full object-contain" />
-        </div>
-        <p class="text-[10px] text-stone-500">Restaurante Río Chico • Banco Unión / Simple QR</p>
+      <div id="bill-request-status" class="hidden rounded-lg border border-emerald-500/30 bg-emerald-950/40 p-3 text-xs text-emerald-200" role="status">
+        Tu aviso ya llegó a caja. El personal se acercará a tu mesa.
       </div>
 
       <div class="pt-2 border-t border-stone-800 flex flex-col gap-2">
-        <button onclick="confirmBillRequest()" class="w-full py-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs active:scale-95 transition-all shadow">
-          🔔 Enviar Solicitud de Cuenta
+        <button id="bill-request-button" onclick="confirmBillRequest()" class="w-full py-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-sm active:scale-95 transition-all shadow disabled:cursor-not-allowed disabled:opacity-50">
+          Avisar a caja
         </button>
       </div>
     </div>
@@ -1092,7 +1084,7 @@
             <i data-lucide="receipt" class="w-5 h-5"></i>
           </div>
           <div>
-            <h3 class="font-bold text-base text-white">Detalle de tu Pedido</h3>
+            <h3 class="font-bold text-base text-white">Tu pedido</h3>
             <p id="modal-ticket-id" class="text-xs font-mono text-amber-400">Ticket: #RC-----</p>
           </div>
         </div>
@@ -1102,46 +1094,38 @@
       <div class="p-4 overflow-y-auto space-y-4 flex-grow safe-bottom">
         <div>
           <div class="flex items-center justify-between text-xs text-stone-400 font-semibold uppercase tracking-wider mb-2">
-            <span>Platos Seleccionados</span>
+            <span>Tu carrito</span>
             <button onclick="clearCart()" class="text-red-400 hover:text-red-300 text-xs normal-case">Vaciar todo</button>
           </div>
           <div id="modal-items-list" class="space-y-2.5"></div>
         </div>
 
-        <div class="p-3 rounded-xl bg-emerald-950/50 border border-emerald-500/30 flex items-start gap-2.5 text-xs text-emerald-200">
-          <span class="text-lg">🥗</span>
-          <div>
-            <strong class="text-emerald-300">¡Ensaladas de cortesía incluidas!</strong>
-            <p class="text-emerald-200/80 mt-0.5">Te serviremos ensaladas frescas variadas a tu mesa sin costo adicional.</p>
-          </div>
-        </div>
-
         <div class="bg-stone-950/60 p-3.5 rounded-2xl border border-stone-800 space-y-3">
-          <label class="block text-xs font-semibold text-stone-300 uppercase tracking-wider">Modalidad del Pedido</label>
+          <label class="block text-xs font-semibold text-stone-300 uppercase tracking-wider">¿Cómo recibirás tu pedido?</label>
           <div class="grid grid-cols-2 gap-2">
             <button type="button" id="btn-mode-table" onclick="setOrderMode('table')" class="py-2.5 px-3 rounded-xl border text-xs font-semibold flex items-center justify-center gap-1.5 transition-all bg-amber-500/20 border-amber-500 text-amber-300 shadow-sm">
               <i data-lucide="utensils-crossed" class="w-4 h-4"></i>
-              <span>En Mesa (<span id="order-mode-mesa-name">Escanea QR</span>)</span>
+              <span id="order-mode-mesa-name">Escanea QR</span>
             </button>
             <button type="button" id="btn-mode-takeaway" onclick="setOrderMode('takeaway')" class="py-2.5 px-3 rounded-xl border border-stone-800 text-xs font-semibold flex items-center justify-center gap-1.5 transition-all bg-stone-900 text-stone-400">
               <i data-lucide="package" class="w-4 h-4"></i>
-              <span>Para Llevar</span>
+              <span>Delivery</span>
             </button>
           </div>
           <p id="order-table-notice" class="hidden text-[11px] text-amber-300">Para pedir en salón, escanea el código QR de tu mesa.</p>
 
           <div>
-            <label class="block text-xs text-stone-400 mb-1">Tu Nombre o Nombre de Reserva:</label>
+            <label class="block text-xs text-stone-400 mb-1">Nombre:</label>
             <input id="input-customer-name" type="text" placeholder="Ej. Juan Pérez" class="w-full px-3.5 py-2 rounded-xl bg-stone-900 border border-stone-700 text-sm text-white focus:outline-none focus:border-amber-500" />
           </div>
 
           <div id="takeaway-address-group" class="hidden">
-            <label class="block text-xs text-stone-400 mb-1">Dirección de entrega:</label>
+            <label class="block text-xs text-stone-400 mb-1">Dirección de entrega en Tarija:</label>
             <input id="input-takeaway-address" type="text" placeholder="Barrio, calle y referencia" class="w-full px-3.5 py-2 rounded-xl bg-stone-900 border border-stone-700 text-sm text-white focus:outline-none focus:border-amber-500" />
           </div>
 
           <div>
-            <label class="block text-xs text-stone-400 mb-1">Instrucciones Especiales para Cocina:</label>
+            <label class="block text-xs text-stone-400 mb-1">Nota para cocina (opcional):</label>
             <input id="input-general-notes" type="text" placeholder="Ej. Servir sopas de entrada por favor" class="w-full px-3.5 py-2 rounded-xl bg-stone-900 border border-stone-700 text-sm text-white focus:outline-none focus:border-amber-500" />
           </div>
         </div>
@@ -1164,21 +1148,12 @@
           </div>
         </div>
 
-        <div class="p-3 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-300 text-xs">
-          <p class="font-semibold flex items-center gap-1.5">
-            <i data-lucide="info" class="w-4 h-4 text-amber-400"></i>
-            <span>Política de Cambios y Cancelación</span>
-          </p>
-          <p class="text-[11px] text-amber-200/80 mt-1">
-            Conserva tu ticket <strong id="policy-ticket-code" class="text-amber-300">#RC-XXXX</strong> para consultar o modificar tu comanda con el personal.
-          </p>
-        </div>
       </div>
 
       <div class="p-4 border-t border-stone-800 bg-stone-950 flex flex-col gap-2">
-        <button id="send-order-button" onclick="sendOrderDirectToKitchen()" class="w-full py-3.5 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-sm md:text-base flex items-center justify-center gap-2 shadow-lg active:scale-[0.98] transition-all">
+        <button id="send-order-button" onclick="sendOrderDirectToKitchen()" class="w-full py-3.5 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-sm md:text-base flex items-center justify-center gap-2 shadow-lg active:scale-[0.98] transition-all disabled:cursor-not-allowed disabled:opacity-50">
           <i data-lucide="send" class="w-5 h-5"></i>
-          <span>Enviar comanda a cocina</span>
+          <span>Enviar pedido</span>
         </button>
         <button onclick="closeOrderModal()" class="w-full py-2 text-xs text-stone-400 hover:text-stone-200">
           Seguir viendo el menú
@@ -1787,17 +1762,34 @@
     // ==========================================
     function renderAdaptiveDock() {
       const dock = document.getElementById("dock-container");
+      const bottomTabBar = document.getElementById("bottom-tab-bar");
+      const mainApp = document.getElementById("main-app");
       const sessionPill = document.getElementById("staff-session-pill");
       const customerActions = document.getElementById("customer-service-actions");
       const btnOpenPin = document.getElementById("btn-open-pin");
+      const aiAssistant = document.getElementById("btn-ai-assistant");
+      const returnHome = document.getElementById("btn-return-home");
       const roleBadge = document.getElementById("staff-role-badge");
 
-      const isStaff = store.staffSession && store.staffSession.role;
+      const isStaff = Boolean(store.staffSession && store.staffSession.role);
+      if (mainApp) {
+        mainApp.classList.add("pb-24");
+        mainApp.classList.remove("pb-4", "pb-28");
+      }
+      const floatingCart = document.getElementById("floating-cart");
+      if (floatingCart) {
+        floatingCart.classList.toggle("bottom-20", isStaff);
+        floatingCart.classList.toggle("safe-bottom-fixed", !isStaff);
+        floatingCart.classList.toggle("hidden", !isStaff);
+      }
 
       if (isStaff) {
+        if (bottomTabBar) bottomTabBar.classList.remove("hidden");
         if (sessionPill) sessionPill.classList.remove("hidden");
         if (customerActions) customerActions.classList.add("hidden");
         if (btnOpenPin) btnOpenPin.classList.add("hidden");
+        if (aiAssistant) aiAssistant.classList.remove("hidden");
+        if (returnHome) returnHome.classList.remove("hidden");
         if (roleBadge) roleBadge.textContent = store.staffSession.role.toUpperCase();
 
         // Dock para Personal / Admin: Menú, Mesas, Cocina KDS, Admin
@@ -1829,28 +1821,22 @@
           </button>
         `;
       } else {
+        if (bottomTabBar) bottomTabBar.classList.remove("hidden");
         if (sessionPill) sessionPill.classList.add("hidden");
-        if (customerActions) customerActions.classList.remove("hidden");
+        if (customerActions) customerActions.classList.add("hidden");
         if (btnOpenPin) btnOpenPin.classList.remove("hidden");
+        if (aiAssistant) aiAssistant.classList.add("hidden");
+        if (returnHome) returnHome.classList.add("hidden");
 
-        // Dock para Clientes: Menú, Mi Comanda, Llamar Mozo, Pedir Cuenta
-        dock.className = "max-w-md mx-auto grid grid-cols-4 items-center h-16 px-2";
+        dock.className = "max-w-lg mx-auto grid grid-cols-2 items-center h-16 px-2";
         dock.innerHTML = `
-          <button id="tab-btn-menu" onclick="switchTab('menu')" class="flex flex-col items-center justify-center gap-1 active:scale-90 text-amber-500 font-bold">
+          <button id="tab-btn-menu" onclick="switchTab('menu')" class="flex h-full flex-col items-center justify-center gap-1 text-amber-400" aria-current="page">
             <i data-lucide="utensils" class="w-5 h-5"></i>
             <span class="text-[11px] font-bold">Menú</span>
           </button>
-          <button onclick="scrollToActiveOrder()" class="flex flex-col items-center justify-center gap-1 active:scale-90 text-stone-400 hover:text-stone-200">
-            <i data-lucide="clock" class="w-5 h-5"></i>
-            <span class="text-[11px] font-bold">Comanda</span>
-          </button>
-          <button onclick="callMozo()" class="flex flex-col items-center justify-center gap-1 active:scale-90 text-stone-400 hover:text-stone-200">
-            <i data-lucide="bell" class="w-5 h-5"></i>
-            <span class="text-[11px] font-bold">Llamar Mozo</span>
-          </button>
-          <button onclick="openBillModal()" class="flex flex-col items-center justify-center gap-1 active:scale-90 text-emerald-400 hover:text-emerald-300">
-            <i data-lucide="receipt" class="w-5 h-5"></i>
-            <span class="text-[11px] font-bold">Pedir Cuenta</span>
+          <button id="tab-btn-cart" onclick="openOrderModal()" class="flex h-full items-center justify-center gap-2 text-stone-200" aria-label="Abrir carrito">
+            <span class="relative"><i data-lucide="shopping-basket" class="w-5 h-5"></i><span id="customer-cart-count" class="absolute -right-2 -top-2 min-w-4 rounded-full bg-amber-500 px-1 text-center text-[9px] font-black text-stone-950">0</span></span>
+            <span class="text-left"><span class="block text-[11px] font-bold">Carrito</span><span id="customer-cart-total" class="block text-[10px] text-stone-400">0 Bs</span></span>
           </button>
         `;
       }
@@ -1881,7 +1867,10 @@
 
       const floatingCart = document.getElementById("floating-cart");
       if (floatingCart) {
-        if (tabName !== "menu") floatingCart.classList.add("hidden");
+        const isStaff = Boolean(store.staffSession && store.staffSession.role);
+        floatingCart.classList.toggle("bottom-20", isStaff);
+        floatingCart.classList.toggle("safe-bottom-fixed", !isStaff);
+        if (!isStaff || tabName !== "menu") floatingCart.classList.add("hidden");
         else { floatingCart.classList.remove("hidden"); updateCartUI(); }
       }
 
@@ -1927,19 +1916,18 @@
       document.getElementById("order-banner-status-badge").textContent = info.label;
       document.getElementById("order-banner-desc").textContent = info.desc;
 
-      // Resaltar stepper
-      [1, 2, 3, 4].forEach(stepNum => {
-        const el = document.getElementById(`step-${stepNum}`);
-        if (!el) return;
-        const currentNum = activeOrder.status === 'pendiente' ? 1 :
-                           activeOrder.status === 'en-fogones' ? 2 :
-                           activeOrder.status === 'servido' ? 3 : 4;
-        if (stepNum <= currentNum) {
-          el.className = "px-2 py-1 rounded-lg bg-amber-500/30 text-amber-300 border border-amber-500/40";
-        } else {
-          el.className = "px-2 py-1 rounded-lg bg-stone-800 text-stone-500";
-        }
-      });
+      const progress = { pendiente: 25, "en-fogones": 50, servido: 75, "por-pagar": 100 };
+      const progressBar = document.getElementById("order-status-progress");
+      const progressFill = document.getElementById("order-status-progress-fill");
+      const progressValue = progress[activeOrder.status] || 25;
+      if (progressBar) progressBar.setAttribute("aria-valuenow", progressValue);
+      if (progressFill) progressFill.style.width = `${progressValue}%`;
+      const requestBillButton = document.getElementById("btn-request-bill");
+      if (requestBillButton) {
+        const requestSent = localStorage.getItem(getBillRequestStorageKey(activeOrder.tableId)) === activeOrder.id;
+        requestBillButton.disabled = activeOrder.status === "por-pagar" || requestSent;
+        requestBillButton.textContent = requestBillButton.disabled ? "Cuenta solicitada" : "Pedir cuenta";
+      }
     }
 
     function scrollToActiveOrder() {
@@ -1982,6 +1970,10 @@
       }
     }
 
+    function getBillRequestStorageKey(tableId) {
+      return `rio_chico_bill_request_${tableId}`;
+    }
+
     function openBillModal() {
       triggerHaptic(15);
       if (!store.currentTable) {
@@ -1989,9 +1981,24 @@
         return;
       }
       const activeOrder = getCurrentTableActiveOrder();
+      if (!activeOrder || activeOrder.status === "pagado") {
+        showToast("Tu mesa todavía no tiene una comanda activa.");
+        return;
+      }
+      if (activeOrder.status === "por-pagar") {
+        showToast("Caja ya está atendiendo tu cuenta.");
+        return;
+      }
+      const requestSent = localStorage.getItem(getBillRequestStorageKey(activeOrder.tableId)) === activeOrder.id;
       document.getElementById("bill-mesa-label").textContent = store.currentTable.name;
-      document.getElementById("bill-total-amount").textContent = activeOrder ? activeOrder.total : "0";
-      calculateChange(document.getElementById("cash-input-amount").value);
+      document.getElementById("bill-total-amount").textContent = activeOrder.total;
+      document.getElementById("cash-input-amount").value = "";
+      selectPayMethod("cash");
+      document.getElementById("bill-payment-options").classList.toggle("hidden", requestSent);
+      document.getElementById("bill-request-status").classList.toggle("hidden", !requestSent);
+      document.getElementById("bill-request-button").disabled = requestSent;
+      document.getElementById("bill-request-button").textContent = requestSent ? "Aviso enviado" : "Avisar a caja";
+      calculateChange("");
       const modal = document.getElementById("bill-modal");
       modal.classList.remove("opacity-0", "pointer-events-none");
     }
@@ -2008,15 +2015,17 @@
       const btnQr = document.getElementById("btn-pay-qr");
       const boxCash = document.getElementById("cash-calculator-box");
       const boxQr = document.getElementById("qr-payment-box");
+      btnCash.setAttribute("aria-pressed", String(method === "cash"));
+      btnQr.setAttribute("aria-pressed", String(method === "qr"));
 
       if (method === "cash") {
-        btnCash.className = "p-2.5 rounded-xl border border-amber-500 bg-amber-500/20 text-amber-300 font-bold text-xs flex flex-col items-center gap-1";
-        btnQr.className = "p-2.5 rounded-xl border border-stone-800 bg-stone-950 text-stone-400 font-bold text-xs flex flex-col items-center gap-1";
+        btnCash.className = "p-3 rounded-xl border border-amber-500 bg-amber-500/15 text-amber-200 font-bold text-xs flex items-center justify-center gap-2";
+        btnQr.className = "p-3 rounded-xl border border-stone-800 bg-stone-950 text-stone-400 font-bold text-xs flex items-center justify-center gap-2";
         boxCash.classList.remove("hidden");
         boxQr.classList.add("hidden");
       } else {
-        btnQr.className = "p-2.5 rounded-xl border border-amber-500 bg-amber-500/20 text-amber-300 font-bold text-xs flex flex-col items-center gap-1";
-        btnCash.className = "p-2.5 rounded-xl border border-stone-800 bg-stone-950 text-stone-400 font-bold text-xs flex flex-col items-center gap-1";
+        btnQr.className = "p-3 rounded-xl border border-amber-500 bg-amber-500/15 text-amber-200 font-bold text-xs flex items-center justify-center gap-2";
+        btnCash.className = "p-3 rounded-xl border border-stone-800 bg-stone-950 text-stone-400 font-bold text-xs flex items-center justify-center gap-2";
         boxCash.classList.add("hidden");
         boxQr.classList.remove("hidden");
       }
@@ -2025,9 +2034,14 @@
     function calculateChange(val) {
       const activeOrder = getCurrentTableActiveOrder();
       const total = activeOrder ? activeOrder.total : 0;
+      const display = document.getElementById("cash-change-display");
+      if (!val) {
+        display.textContent = "Se calcula en caja";
+        display.className = "font-extrabold text-sm text-stone-400";
+        return;
+      }
       const amount = parseFloat(val) || 0;
       const change = amount - total;
-      const display = document.getElementById("cash-change-display");
       if (display) {
         if (change >= 0) {
           display.textContent = `${change.toFixed(0)} Bs`;
@@ -2052,13 +2066,20 @@
         closeBillModal();
         return;
       }
-      const total = activeOrder ? activeOrder.total : 0;
-      const cashGiven = document.getElementById("cash-input-amount").value;
-      const change = (parseFloat(cashGiven) || total) - total;
+      const total = Number(activeOrder.total) || 0;
+      const cashGiven = document.getElementById("cash-input-amount").value.trim();
+      const cashAmount = Number(cashGiven);
+      if (store.payMethod === "cash" && cashGiven && cashAmount < total) {
+        alert("El efectivo indicado no cubre el total de la cuenta.");
+        return;
+      }
 
-      const details = store.payMethod === "cash" 
-        ? `Efectivo (Paga con ${cashGiven || total} Bs, Cambio: ${change > 0 ? change : 0} Bs)`
-        : `Pago por QR Banco`;
+      const details = store.payMethod === "cash"
+        ? cashGiven ? `Efectivo (${cashAmount} Bs)` : "Efectivo"
+        : "Pago por QR";
+      const requestButton = document.getElementById("bill-request-button");
+      requestButton.disabled = true;
+      requestButton.textContent = "Enviando aviso...";
 
       try {
         await firebaseDb.collection("calls").add({
@@ -2069,10 +2090,16 @@
           status: "pendiente",
           createdAt: firebase.firestore.FieldValue.serverTimestamp()
         });
-        closeBillModal();
-        showToast("Solicitud de cuenta enviada a Caja y Mozo.");
+        localStorage.setItem(getBillRequestStorageKey(activeOrder.tableId), activeOrder.id);
+        document.getElementById("bill-payment-options").classList.add("hidden");
+        document.getElementById("bill-request-status").classList.remove("hidden");
+        requestButton.textContent = "Aviso enviado";
+        renderActiveOrderBanner();
+        showToast("Caja recibió el aviso.");
       } catch (error) {
         console.error("No se pudo enviar la solicitud de cuenta:", error);
+        requestButton.disabled = false;
+        requestButton.textContent = "Avisar a caja";
         alert("No se pudo enviar la solicitud. Revisa tu conexión e inténtalo otra vez.");
       }
     }
@@ -3092,14 +3119,19 @@
       const items = Object.values(store.cart);
       const totalQty = items.reduce((s, i) => s + i.qty, 0);
       const totalPrice = items.reduce((s, i) => s + (i.dish.precio * i.qty), 0);
+      const mainApp = document.getElementById("main-app");
 
       const badgeCount = document.getElementById("cart-badge-count");
       const priceText = document.getElementById("cart-total-price");
+      const customerCartCount = document.getElementById("customer-cart-count");
+      const customerCartTotal = document.getElementById("customer-cart-total");
       if (badgeCount) badgeCount.textContent = totalQty;
       if (priceText) priceText.textContent = totalPrice;
+      if (customerCartCount) customerCartCount.textContent = totalQty;
+      if (customerCartTotal) customerCartTotal.textContent = `${totalPrice} Bs`;
 
       const floatingCart = document.getElementById("floating-cart");
-      if (floatingCart && store.activeTab === "menu") {
+      if (floatingCart && store.activeTab === "menu" && store.staffSession && store.staffSession.role) {
         if (totalQty > 0) {
           floatingCart.classList.remove("translate-y-36", "opacity-0", "pointer-events-none");
           floatingCart.classList.add("translate-y-0", "opacity-100");
@@ -3118,11 +3150,10 @@
         ? activeOrder.id
         : store.ticketId;
       document.getElementById("modal-ticket-id").textContent = `Ticket: ${ticket}`;
-      document.getElementById("policy-ticket-code").textContent = ticket;
       document.querySelector("#send-order-button span").textContent =
         store.orderMode === "table" && activeOrder && activeOrder.status !== "pagado"
-          ? "Actualizar comanda en cocina"
-          : "Enviar comanda a cocina";
+          ? "Enviar adición"
+          : "Enviar pedido";
       const modal = document.getElementById("order-modal");
       const sheet = document.getElementById("order-modal-sheet");
       modal.classList.remove("opacity-0", "pointer-events-none");
@@ -3143,12 +3174,19 @@
       const list = document.getElementById("modal-items-list");
       if (!list) return;
       const items = Object.values(store.cart);
+      const sendButton = document.getElementById("send-order-button");
+      const clearButton = document.querySelector("#order-modal button[onclick='clearCart()']");
       if (items.length === 0) {
-        list.innerHTML = `<p class="text-xs text-stone-400 py-4 text-center">No has seleccionado ningún plato aún.</p>`;
+        list.innerHTML = `<div class="py-6 text-center"><i data-lucide="shopping-basket" class="mx-auto mb-2 h-7 w-7 text-stone-500"></i><p class="text-sm font-semibold text-stone-300">Tu carrito está vacío</p><p class="mt-1 text-xs text-stone-500">Agrega platos desde el menú para continuar.</p></div>`;
         document.getElementById("modal-subtotal-price").textContent = "0 Bs";
         document.getElementById("modal-total-price").textContent = "0";
+        if (sendButton) sendButton.disabled = true;
+        if (clearButton) clearButton.classList.add("hidden");
+        lucide.createIcons();
         return;
       }
+      if (sendButton) sendButton.disabled = false;
+      if (clearButton) clearButton.classList.remove("hidden");
 
       let totalPrice = 0;
       list.innerHTML = items.map(item => {
