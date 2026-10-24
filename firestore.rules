@@ -72,26 +72,40 @@ service cloud.firestore {
     }
 
     match /orders/{orderId} {
+      function validStaffOrderUpdate() {
+        let changedKeys = request.resource.data.diff(resource.data).affectedKeys();
+        return isStaff()
+          && changedKeys.hasOnly([
+            'status', 'items', 'kdsArchived', 'total', 'notes',
+            'isAddition', 'customerName', 'paymentMethod'
+          ])
+          && request.resource.data.status in [
+            'pendiente', 'en-fogones', 'servido', 'por-pagar', 'pagado'
+          ]
+          && (!changedKeys.hasAny(['paymentMethod'])
+            || request.resource.data.paymentMethod in ['cash', 'qr'])
+          && (!changedKeys.hasAny(['items'])
+            || (request.resource.data.items is list
+              && request.resource.data.items.size() <= 50))
+          && (!changedKeys.hasAny(['kdsArchived'])
+            || request.resource.data.kdsArchived is bool)
+          && (!changedKeys.hasAny(['total'])
+            || (request.resource.data.total is number
+              && request.resource.data.total >= 0))
+          && (!changedKeys.hasAny(['notes'])
+            || (request.resource.data.notes is string
+              && request.resource.data.notes.size() <= 500))
+          && (!changedKeys.hasAny(['customerName'])
+            || (request.resource.data.customerName is string
+              && request.resource.data.customerName.size() <= 100))
+          && (!changedKeys.hasAny(['isAddition'])
+            || request.resource.data.isAddition is bool);
+      }
+
       allow create: if validOrder();
       allow read: if isStaff()
         || (signedIn() && resource.data.customerUid == request.auth.uid);
-      allow update: if (isStaff()
-        && request.resource.data.diff(resource.data).affectedKeys()
-          .hasOnly(['status', 'items', 'kdsArchived', 'total', 'notes', 'isAddition', 'customerName', 'paymentMethod'])
-        && request.resource.data.status in [
-          'pendiente', 'en-fogones', 'servido', 'por-pagar', 'pagado'
-        ]
-        && (!request.resource.data.keys().hasAny(['paymentMethod'])
-          || request.resource.data.paymentMethod in ['cash', 'qr'])
-        && request.resource.data.items is list
-        && request.resource.data.kdsArchived is bool
-        && request.resource.data.total is number
-        && request.resource.data.total >= 0
-        && request.resource.data.notes is string
-        && request.resource.data.notes.size() <= 500
-        && request.resource.data.customerName is string
-        && request.resource.data.customerName.size() <= 100
-        && request.resource.data.isAddition is bool)
+      allow update: if validStaffOrderUpdate()
         || (signedIn()
           && resource.data.customerUid == request.auth.uid
           && resource.data.mode == 'table'
