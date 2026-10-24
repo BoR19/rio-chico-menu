@@ -2502,9 +2502,10 @@
 
       return Array.from(groups.values()).map(group => ({
         ...group,
-        orders: group.orders.sort((a, b) =>
-          (a.createdAt?.seconds || 0) - (b.createdAt?.seconds || 0)
-        )
+        orders: group.orders.sort((a, b) => {
+          if (Boolean(a.isAddition) !== Boolean(b.isAddition)) return a.isAddition ? 1 : -1;
+          return (a.createdAt?.seconds || 0) - (b.createdAt?.seconds || 0);
+        })
       }));
     }
 
@@ -2533,6 +2534,42 @@
           const count = group.orders.filter(order => order.status === status.key).length;
           return count ? `<span class="rounded-md border px-2 py-1 text-[10px] font-bold ${status.className}">${count} ${status.label}</span>` : "";
         }).join("");
+        let additionNumber = 0;
+        const batches = group.orders.map(order => {
+          const statusLabels = { pendiente: "Pendiente", "en-fogones": "En fogones", servido: "Servido" };
+          const batchLabel = order.isAddition ? `Adición ${++additionNumber}` : "Pedido inicial";
+          const pendingAction = order.isAddition ? "Pasar adición a fogones" : "Pasar pedido a fogones";
+          return `
+            <section class="py-3 first:pt-2 last:pb-0">
+              <div class="mb-2 flex flex-wrap items-center justify-between gap-2">
+                <div class="flex items-center gap-2">
+                  <span class="text-[11px] font-bold text-stone-200">${batchLabel}</span>
+                  <span class="rounded border border-stone-700 px-1.5 py-0.5 text-[9px] font-semibold text-stone-400">${statusLabels[order.status] || "Pendiente"}</span>
+                </div>
+                <span class="text-[10px] font-mono text-stone-500">${escapeHtml(order.tiempo || "En curso")}</span>
+              </div>
+              <div class="space-y-1.5">
+                ${(order.items || []).map((item, idx) => `
+                  <label class="flex items-start gap-2 rounded-lg bg-stone-950/60 px-2.5 py-2 text-xs">
+                    <input type="checkbox" ${item.listo ? 'checked' : ''} onchange="toggleKdsItem('${order.id}', ${idx})" class="mt-0.5 rounded accent-amber-500 cursor-pointer" />
+                    <span class="flex-1 ${item.listo ? 'line-through text-stone-500' : 'text-stone-100 font-semibold'}">
+                      ${item.qty} × ${escapeHtml(item.nombre)}
+                      ${item.nota ? `<span class="mt-0.5 block text-[11px] font-normal text-amber-300">${escapeHtml(item.nota)}</span>` : ''}
+                    </span>
+                  </label>
+                `).join("")}
+              </div>
+              <div class="mt-2">
+                ${order.status === "pendiente" ? `
+                  <button onclick="setKdsStatus('${order.id}', 'en-fogones')" class="w-full rounded-lg bg-orange-600 py-2 text-xs font-bold text-white hover:bg-orange-500">${pendingAction}</button>
+                ` : order.status === "en-fogones" ? `
+                  <button onclick="setKdsStatus('${order.id}', 'servido')" class="w-full rounded-lg bg-emerald-600 py-2 text-xs font-bold text-white hover:bg-emerald-500">Marcar ${order.isAddition ? "adición" : "pedido"} servido</button>
+                ` : `
+                  <button onclick="finishKdsComanda('${order.id}')" class="w-full rounded-lg bg-stone-800 py-2 text-xs font-bold text-stone-200 hover:bg-stone-700">Finalizar ${order.isAddition ? "adición" : "pedido"}</button>
+                `}
+              </div>
+            </section>`;
+        }).join("");
 
         return `
           <article class="glass-card rounded-xl p-4 border border-stone-800 shadow-xl">
@@ -2551,40 +2588,7 @@
               </div>
 
               <div class="divide-y divide-stone-800">
-                ${group.orders.map((order, orderIndex) => {
-                  const statusLabels = { pendiente: "Pendiente", "en-fogones": "En fogones", servido: "Servido" };
-                  const batchLabel = order.isAddition ? `Adición ${orderIndex}` : "Pedido inicial";
-                  return `
-                    <section class="py-3 first:pt-2 last:pb-0">
-                      <div class="mb-2 flex flex-wrap items-center justify-between gap-2">
-                        <div class="flex items-center gap-2">
-                          <span class="text-[11px] font-bold text-stone-200">${batchLabel}</span>
-                          <span class="rounded border border-stone-700 px-1.5 py-0.5 text-[9px] font-semibold text-stone-400">${statusLabels[order.status] || "Pendiente"}</span>
-                        </div>
-                        <span class="text-[10px] font-mono text-stone-500">${escapeHtml(order.tiempo || "En curso")}</span>
-                      </div>
-                      <div class="space-y-1.5">
-                        ${(order.items || []).map((item, idx) => `
-                          <label class="flex items-start gap-2 rounded-lg bg-stone-950/60 px-2.5 py-2 text-xs">
-                            <input type="checkbox" ${item.listo ? 'checked' : ''} onchange="toggleKdsItem('${order.id}', ${idx})" class="mt-0.5 rounded accent-amber-500 cursor-pointer" />
-                            <span class="flex-1 ${item.listo ? 'line-through text-stone-500' : 'text-stone-100 font-semibold'}">
-                              ${item.qty} × ${escapeHtml(item.nombre)}
-                              ${item.nota ? `<span class="mt-0.5 block text-[11px] font-normal text-amber-300">${escapeHtml(item.nota)}</span>` : ''}
-                            </span>
-                          </label>
-                        `).join("")}
-                      </div>
-                      <div class="mt-2">
-                        ${order.status === "pendiente" ? `
-                          <button onclick="setKdsStatus('${order.id}', 'en-fogones')" class="w-full rounded-lg bg-orange-600 py-2 text-xs font-bold text-white hover:bg-orange-500">Pasar adición a fogones</button>
-                        ` : order.status === "en-fogones" ? `
-                          <button onclick="setKdsStatus('${order.id}', 'servido')" class="w-full rounded-lg bg-emerald-600 py-2 text-xs font-bold text-white hover:bg-emerald-500">Marcar ${order.isAddition ? "adición" : "pedido"} servido</button>
-                        ` : `
-                          <button onclick="finishKdsComanda('${order.id}')" class="w-full rounded-lg bg-stone-800 py-2 text-xs font-bold text-stone-200 hover:bg-stone-700">Finalizar ${order.isAddition ? "adición" : "pedido"}</button>
-                        `}
-                      </div>
-                    </section>`;
-                }).join("")}
+                ${batches}
               </div>
             </div>
           </article>
