@@ -444,6 +444,22 @@
         </button>
       </div>
 
+      <div id="staff-table-order-panel" class="mb-4 rounded-xl border border-stone-800 bg-stone-950/70 p-4">
+        <div class="flex flex-col sm:flex-row sm:items-end gap-3">
+          <div class="flex-1">
+            <label for="staff-table-selector" class="block text-xs font-semibold text-stone-300 mb-1">Consultar cuenta de mesa</label>
+            <select id="staff-table-selector" onchange="selectStaffTable(this.value)" class="w-full px-3 py-2 rounded-lg bg-stone-900 border border-stone-700 text-sm text-white focus:outline-none focus:border-amber-500">
+              <option value="">Selecciona una mesa</option>
+            </select>
+          </div>
+          <div id="staff-table-order-total" class="text-lg font-extrabold text-amber-400">0 Bs</div>
+        </div>
+        <div id="staff-table-order-detail" class="mt-3 text-sm text-stone-400">Selecciona una mesa para consultar su cuenta.</div>
+        <button id="staff-table-charge-button" onclick="cobrarYLiberarMesa(store.selectedStaffTableId)" class="hidden mt-3 w-full sm:w-auto px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs disabled:opacity-50" disabled>
+          Cobrar y liberar mesa
+        </button>
+      </div>
+
       <!-- Grid de Mesas -->
       <div id="mesas-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3.5 md:gap-4"></div>
     </section>
@@ -1105,13 +1121,14 @@
           <div class="grid grid-cols-2 gap-2">
             <button type="button" id="btn-mode-table" onclick="setOrderMode('table')" class="py-2.5 px-3 rounded-xl border text-xs font-semibold flex items-center justify-center gap-1.5 transition-all bg-amber-500/20 border-amber-500 text-amber-300 shadow-sm">
               <i data-lucide="utensils-crossed" class="w-4 h-4"></i>
-              <span>En Mesa (<span id="order-mode-mesa-name">Mesa 01</span>)</span>
+              <span>En Mesa (<span id="order-mode-mesa-name">Escanea QR</span>)</span>
             </button>
             <button type="button" id="btn-mode-takeaway" onclick="setOrderMode('takeaway')" class="py-2.5 px-3 rounded-xl border border-stone-800 text-xs font-semibold flex items-center justify-center gap-1.5 transition-all bg-stone-900 text-stone-400">
               <i data-lucide="package" class="w-4 h-4"></i>
               <span>Para Llevar</span>
             </button>
           </div>
+          <p id="order-table-notice" class="hidden text-[11px] text-amber-300">Para pedir en salón, escanea el código QR de tu mesa.</p>
 
           <div>
             <label class="block text-xs text-stone-400 mb-1">Tu Nombre o Nombre de Reserva:</label>
@@ -1204,13 +1221,8 @@
       staffSession: { role: null, user: null, uid: null },
       currentPinBuffer: "",
 
-      // 3. Mesa Actual del Comensal (Detectada por URL ?mesa=X o default)
-      currentTable: {
-        id: "m_1",
-        name: "Mesa 01",
-        seats: 4,
-        status: "libre"
-      },
+      // 3. Mesa actual del comensal (solo se asigna desde un QR válido)
+      currentTable: null,
 
       // 4. Comanda Activa de la Mesa (ActiveOrderBanner)
       activeOrder: null,
@@ -1250,6 +1262,7 @@
       // Estados de Filtros de Pestaña
       activeTab: "menu",
       mesasFilter: "all",
+      selectedStaffTableId: "",
       cocinaFilter: "all",
       adminSubTab: "inventario",
       payMethod: "cash"
@@ -1291,7 +1304,13 @@
       const mesaParam = (urlParams.get("mesa") || "").trim();
       if (mesaParam) {
         const normalizedMesa = mesaParam.toLowerCase();
-        const found = store.mesas.find(m => m.name.toLowerCase().includes(normalizedMesa) || m.id.includes(normalizedMesa));
+        const found = store.mesas.find(m => {
+          const normalizedName = m.name.toLowerCase().replace(/[\s_-]/g, "");
+          const requestedName = normalizedMesa.replace(/[\s_-]/g, "");
+          const numericMatch = /^\d+$/.test(normalizedMesa) &&
+            Number(m.name.match(/\d+$/)?.[0]) === Number(normalizedMesa);
+          return normalizedName === requestedName || m.id.toLowerCase() === normalizedMesa || numericMatch;
+        });
         if (found) {
           store.currentTable = found;
         } else {
@@ -1315,10 +1334,12 @@
       const mesaTag = document.getElementById("header-mesa-indicator");
       const heroTag = document.getElementById("hero-mesa-tag");
       const orderModeMesaName = document.getElementById("order-mode-mesa-name");
-      if (mesaTag) mesaTag.textContent = store.currentTable.name;
-      if (heroTag) heroTag.textContent = `${store.currentTable.name} • Tarija`;
-      if (orderModeMesaName) orderModeMesaName.textContent = store.currentTable.name;
-      restoreLocalOrderState(store.currentTable.id);
+      const tableLabel = store.currentTable ? store.currentTable.name : "Sin mesa";
+      if (mesaTag) mesaTag.textContent = tableLabel;
+      if (heroTag) heroTag.textContent = `${tableLabel} • Tarija`;
+      if (orderModeMesaName) orderModeMesaName.textContent = store.currentTable ? store.currentTable.name : "Escanea QR";
+      if (store.currentTable) restoreLocalOrderState(store.currentTable.id);
+      setOrderMode(store.currentTable ? "table" : "takeaway");
       if (mesaParam) enterMenuWithAnimation();
 
       // 2. Cargar Menú e Inventario
@@ -1355,7 +1376,7 @@
             stopStaffListeners();
             store.staffSession = { role: null, user: null, uid: null };
             renderAdaptiveDock();
-            restoreLocalOrderState(store.currentTable.id);
+            if (store.currentTable) restoreLocalOrderState(store.currentTable.id);
             restoreGuestOrder(user);
           } else if (user) {
             activateStaffSession(user);
@@ -1399,6 +1420,7 @@
     function restoreGuestOrder(user) {
       if (unsubscribeGuestOrders) unsubscribeGuestOrders();
       unsubscribeGuestOrders = null;
+      if (!store.currentTable) return;
 
       try {
         unsubscribeGuestOrders = firebaseDb.collection("orders")
@@ -1501,7 +1523,7 @@
         closePinAuthModal();
         renderAdaptiveDock();
         showToast(`Sesión iniciada como ${profile.role}.`);
-        if (profile.role === "admin" || profile.role === "mozo") switchTab("mesas");
+        if (["admin", "mozo", "cajero"].includes(profile.role)) switchTab("mesas");
         subscribeToStaffData();
       } catch (error) {
         console.error("No se pudo validar la cuenta del personal:", error);
@@ -1623,7 +1645,7 @@
           const tableOrders = orders
             .filter(order => order.mode === "table" && order.tableId && order.status !== "pagado")
             .sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
-          const latestOrder = tableOrders.find(order => order.tableId === store.currentTable.id);
+          const latestOrder = store.currentTable && tableOrders.find(order => order.tableId === store.currentTable.id);
           if (latestOrder) {
             const relatedOrders = tableOrders.filter(order => order.tableId === latestOrder.tableId);
             store.activeOrder = {
@@ -1874,7 +1896,7 @@
     // SEGUIMIENTO DE COMANDA (ActiveOrderBanner)
     // ==========================================
     function getCurrentTableActiveOrder() {
-      return store.activeOrder && store.activeOrder.tableId === store.currentTable.id
+      return store.currentTable && store.activeOrder && store.activeOrder.tableId === store.currentTable.id
         ? store.activeOrder
         : null;
     }
@@ -1940,6 +1962,10 @@
     // ==========================================
     async function callMozo() {
       triggerHaptic(25);
+      if (!store.currentTable) {
+        showToast("Escanea el QR de tu mesa para solicitar atención.");
+        return;
+      }
       try {
         await firebaseDb.collection("calls").add({
           tableId: store.currentTable.id,
@@ -1958,6 +1984,10 @@
 
     function openBillModal() {
       triggerHaptic(15);
+      if (!store.currentTable) {
+        showToast("Escanea el QR de tu mesa para solicitar la cuenta.");
+        return;
+      }
       const activeOrder = getCurrentTableActiveOrder();
       document.getElementById("bill-mesa-label").textContent = store.currentTable.name;
       document.getElementById("bill-total-amount").textContent = activeOrder ? activeOrder.total : "0";
@@ -2011,6 +2041,11 @@
 
     async function confirmBillRequest() {
       triggerHaptic(30);
+      if (!store.currentTable) {
+        closeBillModal();
+        showToast("Escanea el QR de tu mesa para solicitar la cuenta.");
+        return;
+      }
       const activeOrder = getCurrentTableActiveOrder();
       if (!activeOrder) {
         alert("Esta mesa todavía no tiene una comanda activa.");
@@ -2089,6 +2124,73 @@
     // ==========================================
     // MÓDULO MESAS & GENERADOR DE QR
     // ==========================================
+    function selectStaffTable(tableId, shouldScroll = false) {
+      store.selectedStaffTableId = tableId;
+      renderMesas();
+      if (shouldScroll) {
+        document.getElementById("staff-table-order-panel")?.scrollIntoView({ behavior: "smooth", block: "start" });
+      }
+    }
+
+    function renderStaffTableOrderDetail() {
+      const selector = document.getElementById("staff-table-selector");
+      const detail = document.getElementById("staff-table-order-detail");
+      const totalDisplay = document.getElementById("staff-table-order-total");
+      const chargeButton = document.getElementById("staff-table-charge-button");
+      if (!selector || !detail || !totalDisplay || !chargeButton) return;
+
+      selector.innerHTML = `<option value="">Selecciona una mesa</option>${store.mesas.map(table =>
+        `<option value="${escapeHtml(table.id)}">${escapeHtml(table.name)} · ${table.status === "libre" ? "Libre" : table.status === "por-pagar" ? "Por pagar" : "Ocupada"}</option>`
+      ).join("")}`;
+      selector.value = store.selectedStaffTableId;
+
+      const table = store.mesas.find(item => item.id === store.selectedStaffTableId);
+      if (!table) {
+        detail.textContent = "Selecciona una mesa para consultar su cuenta.";
+        totalDisplay.textContent = "0 Bs";
+        chargeButton.classList.add("hidden");
+        chargeButton.disabled = true;
+        return;
+      }
+
+      const orders = latestFirestoreOrders.filter(order =>
+        order.mode === "table" && order.tableId === table.id && order.status !== "pagado"
+      );
+      const total = orders.reduce((sum, order) => sum + (Number(order.total) || 0), 0);
+      totalDisplay.textContent = `${total} Bs`;
+      chargeButton.classList.toggle("hidden", orders.length === 0);
+      chargeButton.disabled = orders.length === 0;
+
+      if (orders.length === 0) {
+        detail.innerHTML = `<p class="text-sm text-stone-400">${escapeHtml(table.name)} no tiene pedidos pendientes.</p>`;
+        return;
+      }
+
+      const itemTotals = new Map();
+      orders.forEach(order => (order.items || []).forEach(item => {
+        const name = item.nombre || "Plato";
+        const note = item.nota || "";
+        const price = Number(item.precio) || 0;
+        const key = `${name}|${note}|${price}`;
+        const existing = itemTotals.get(key) || { name, note, price, qty: 0 };
+        existing.qty += Number(item.qty) || 0;
+        itemTotals.set(key, existing);
+      }));
+
+      detail.innerHTML = `
+        <div class="mb-2 flex flex-wrap gap-2 text-[11px] text-stone-400">
+          ${orders.map(order => `<span class="rounded-md border border-stone-800 px-2 py-1">${escapeHtml(order.ticket || "Sin ticket")} · ${escapeHtml(order.status || "pendiente")}</span>`).join("")}
+        </div>
+        <div class="divide-y divide-stone-800">
+          ${Array.from(itemTotals.values()).map(item => `
+            <div class="flex justify-between gap-3 py-2 text-xs">
+              <div><span class="font-semibold text-stone-200">${item.qty} × ${escapeHtml(item.name)}</span>${item.note ? `<p class="mt-0.5 text-stone-500">${escapeHtml(item.note)}</p>` : ""}</div>
+              <span class="shrink-0 text-stone-300">${item.qty * item.price} Bs</span>
+            </div>
+          `).join("")}
+        </div>`;
+    }
+
     function renderMesas() {
       const grid = document.getElementById("mesas-grid");
       if (!grid) return;
@@ -2162,8 +2264,8 @@
                   Ocupar Mesa
                 </button>
               ` : `
-                <button onclick="cobrarYLiberarMesa('${m.id}')" class="flex-1 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs active:scale-95">
-                  Cobrar y Liberar
+                <button onclick="selectStaffTable('${m.id}', true)" class="flex-1 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs active:scale-95">
+                  Ver cuenta
                 </button>
               `}
             </div>
@@ -2171,6 +2273,7 @@
         `;
       }).join("");
 
+      renderStaffTableOrderDetail();
       lucide.createIcons();
     }
 
@@ -2214,6 +2317,10 @@
       triggerHaptic(25);
       const m = store.mesas.find(x => x.id === mesaId);
       if (m) {
+        const total = latestFirestoreOrders
+          .filter(order => order.tableId === mesaId && order.status !== "pagado")
+          .reduce((sum, order) => sum + (Number(order.total) || 0), 0);
+        if (!window.confirm(`¿Confirmas el cobro de ${m.name} por ${total} Bs y liberar la mesa?`)) return;
         try {
           const orders = await firebaseDb.collection("orders").where("tableId", "==", mesaId).get();
           const batch = firebaseDb.batch();
@@ -2231,6 +2338,7 @@
           });
           await batch.commit();
           Object.assign(m, { status: "libre", activeTicket: "", activeOrderId: "", mozo: "", time: "", total: 0 });
+          store.selectedStaffTableId = "";
           store.activeOrder = null;
           store.llamadas = store.llamadas.filter(l => l.tableId !== mesaId);
           renderMesas();
@@ -3073,8 +3181,12 @@
     }
 
     function setOrderMode(mode) {
+      if (mode === "table" && !store.currentTable) mode = "takeaway";
       store.orderMode = mode;
+      document.getElementById("btn-mode-table").disabled = !store.currentTable;
+      document.getElementById("order-table-notice").classList.toggle("hidden", Boolean(store.currentTable));
       document.getElementById("btn-mode-table").className = mode === 'table' ? "py-2.5 px-3 rounded-xl border text-xs font-semibold flex items-center justify-center gap-1.5 bg-amber-500/20 border-amber-500 text-amber-300 shadow-sm" : "py-2.5 px-3 rounded-xl border border-stone-800 text-xs font-semibold flex items-center justify-center gap-1.5 bg-stone-900 text-stone-400";
+      document.getElementById("btn-mode-table").classList.toggle("opacity-50", !store.currentTable);
       document.getElementById("btn-mode-takeaway").className = mode === 'takeaway' ? "py-2.5 px-3 rounded-xl border text-xs font-semibold flex items-center justify-center gap-1.5 bg-amber-500/20 border-amber-500 text-amber-300 shadow-sm" : "py-2.5 px-3 rounded-xl border border-stone-800 text-xs font-semibold flex items-center justify-center gap-1.5 bg-stone-900 text-stone-400";
       document.getElementById("takeaway-address-group").classList.toggle("hidden", mode !== 'takeaway');
     }
@@ -3097,6 +3209,10 @@
       }
       const totalPrice = items.reduce((s, i) => s + (i.dish.precio * i.qty), 0);
       const isTableOrder = store.orderMode === 'table';
+      if (isTableOrder && !store.currentTable) {
+        alert("Escanea el QR de tu mesa o selecciona Para Llevar.");
+        return;
+      }
       const currentActiveOrder = isTableOrder ? getCurrentTableActiveOrder() : null;
       const currentUser = firebaseAuth && firebaseAuth.currentUser;
       const isUpdatingActiveOrder = Boolean(
