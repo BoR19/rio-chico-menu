@@ -28,7 +28,12 @@ service cloud.firestore {
         && request.resource.data.ticket is string
         && request.resource.data.ticket.size() <= 20
         && signedIn()
-        && request.resource.data.customerUid == request.auth.uid
+        && (
+          request.resource.data.customerUid == request.auth.uid
+          || (isStaff()
+            && request.resource.data.mode == 'table'
+            && request.resource.data.isAddition == true)
+        )
         && request.resource.data.mode in ['table', 'takeaway']
         && request.resource.data.customerName is string
         && request.resource.data.customerName.size() <= 100
