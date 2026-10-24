@@ -1382,7 +1382,7 @@
         const saved = JSON.parse(raw);
         if (saved.tableId !== tableId || !saved.firestoreId || !saved.ticket || !saved.cart) return;
         store.activeOrder = saved;
-        store.cart = saved.cart;
+        store.cart = saved.cartIsAdditionDraft ? saved.cart : {};
         store.ticketId = saved.ticket;
         updateCartUI();
         renderDishes();
@@ -1401,14 +1401,15 @@
         unsubscribeGuestOrders = firebaseDb.collection("orders")
           .where("customerUid", "==", user.uid)
           .onSnapshot(ordersSnapshot => {
-            const activeOrderSnapshot = ordersSnapshot.docs
+            const activeOrders = ordersSnapshot.docs
               .filter(doc => {
                 const order = doc.data();
                 return order.mode === "table" &&
                   order.tableId === store.currentTable.id &&
                   order.status !== "pagado";
               })
-              .sort((a, b) => (b.data().createdAt?.seconds || 0) - (a.data().createdAt?.seconds || 0))[0];
+              .sort((a, b) => (b.data().createdAt?.seconds || 0) - (a.data().createdAt?.seconds || 0));
+            const activeOrderSnapshot = activeOrders[0];
 
             if (!activeOrderSnapshot) {
               localStorage.removeItem(getLocalOrderStorageKey(store.currentTable.id));
@@ -1425,7 +1426,11 @@
             const currentOrder = getCurrentTableActiveOrder();
             const hasMatchingCart = currentOrder &&
               currentOrder.customerUid === user.uid &&
-              currentOrder.firestoreId === activeOrderSnapshot.id;
+              currentOrder.id === order.ticket &&
+              currentOrder.cartIsAdditionDraft === true;
+            const relatedOrders = activeOrders
+              .filter(doc => doc.data().ticket === order.ticket)
+              .map(doc => doc.data());
             store.activeOrder = {
               ...order,
               id: order.ticket,
@@ -1433,22 +1438,12 @@
               tableId: order.tableId,
               tableName: order.tableName,
               status: order.status,
-              total: order.total,
-              items: order.items
+              total: relatedOrders.reduce((sum, relatedOrder) => sum + (Number(relatedOrder.total) || 0), 0),
+              items: relatedOrders.flatMap(relatedOrder => relatedOrder.items || []),
+              cartIsAdditionDraft: true
             };
             store.ticketId = order.ticket;
-            if (!hasMatchingCart) {
-              store.cart = Object.fromEntries((order.items || []).map(item => {
-                const dish = store.dishes.find(menuDish => menuDish.id === item.dishId) || {
-                  id: item.dishId,
-                  nombre: item.nombre,
-                  precio: item.precio,
-                  categoria: "Otros",
-                  descripcion: ""
-                };
-                return [item.dishId, { dish, qty: item.qty, note: item.nota || "" }];
-              }));
-            }
+            if (!hasMatchingCart) store.cart = {};
             persistLocalActiveOrder();
             updateCartUI();
             renderDishes();
@@ -1471,6 +1466,7 @@
         localStorage.setItem(getLocalOrderStorageKey(store.currentTable.id), JSON.stringify({
           ...activeOrder,
           customerUid: activeOrder.customerUid || user.uid,
+          cartIsAdditionDraft: true,
           cart: store.cart
         }));
       } catch (error) {
@@ -3252,11 +3248,14 @@
         return;
       }
       const currentActiveOrder = isTableOrder ? getCurrentTableActiveOrder() : null;
+      if (currentActiveOrder && currentActiveOrder.status === "por-pagar") {
+        alert("La cuenta ya fue solicitada. Espera a caja antes de agregar más platos.");
+        return;
+      }
       const currentUser = firebaseAuth && firebaseAuth.currentUser;
-      const isUpdatingActiveOrder = Boolean(
+      const isAddition = Boolean(
         currentActiveOrder &&
         currentActiveOrder.status !== "pagado" &&
-        currentActiveOrder.firestoreId &&
         currentUser &&
         (store.staffSession.role || currentActiveOrder.customerUid === currentUser.uid)
       );
@@ -3264,26 +3263,21 @@
         alert("Espera un momento mientras se prepara la conexión para guardar la comanda.");
         return;
       }
-      const orderTicket = isUpdatingActiveOrder ? currentActiveOrder.id : store.ticketId;
-      const previousItems = isUpdatingActiveOrder ? currentActiveOrder.items : [];
+      const orderTicket = isAddition ? currentActiveOrder.id : store.ticketId;
       const orderItems = items.map(item => {
-        const previous = previousItems.find(previousItem => previousItem.dishId === item.dish.id);
-        const unchanged = previous &&
-          previous.qty === item.qty &&
-          (previous.nota || "") === (item.note || "");
         return {
           dishId: item.dish.id,
           nombre: item.dish.nombre,
           qty: item.qty,
           precio: item.dish.precio,
           nota: item.note || "",
-          listo: unchanged ? previous.listo === true : false,
-          addition: Boolean(isUpdatingActiveOrder && (!previous || item.qty > previous.qty))
+          listo: false,
+          addition: isAddition
         };
       });
       button.disabled = true;
-      button.querySelector("span").textContent = isUpdatingActiveOrder
-        ? "Actualizando comanda..."
+      button.querySelector("span").textContent = isAddition
+        ? "Enviando adición..."
         : "Enviando comanda...";
 
       let orderRef;
@@ -3300,25 +3294,12 @@
           total: totalPrice,
           items: orderItems,
           status: "pendiente",
-          isAddition: isUpdatingActiveOrder,
+          isAddition,
           kdsArchived: false,
           createdAt: firebase.firestore.FieldValue.serverTimestamp()
         };
-        if (isUpdatingActiveOrder) {
-          orderRef = firebaseDb.collection("orders").doc(currentActiveOrder.firestoreId);
-          await orderRef.update({
-            customerName: order.customerName,
-            total: order.total,
-            notes: order.notes,
-            items: order.items,
-            status: order.status,
-            isAddition: order.isAddition,
-            kdsArchived: order.kdsArchived
-          });
-        } else {
-          orderRef = firebaseDb.collection("orders").doc();
-          await orderRef.set(order);
-        }
+        orderRef = firebaseDb.collection("orders").doc();
+        await orderRef.set(order);
 
         const newOrder = {
           ...order,
@@ -3338,16 +3319,19 @@
         }
         if (isTableOrder) {
           store.activeOrder = {
+            ...(currentActiveOrder || {}),
             id: orderTicket,
             firestoreId: orderRef.id,
             tableId: store.currentTable.id,
             tableName: store.currentTable.name,
             status: "pendiente",
             time: "Ahora",
-            total: totalPrice,
-            items: order.items,
-            customerUid: currentUser.uid
+            total: (Number(currentActiveOrder?.total) || 0) + totalPrice,
+            items: [...(currentActiveOrder?.items || []), ...order.items],
+            customerUid: currentUser.uid,
+            cartIsAdditionDraft: true
           };
+          store.cart = {};
           const table = store.mesas.find(item => item.id === store.currentTable.id);
           if (table) {
             table.status = "ocupada";
@@ -3368,8 +3352,8 @@
       } finally {
         button.disabled = false;
         button.querySelector("span").textContent = store.orderMode === "table" && getCurrentTableActiveOrder()
-          ? "Actualizar comanda en cocina"
-          : "Enviar comanda a cocina";
+          ? "Enviar adición"
+          : "Enviar pedido";
       }
 
       if (!isTableOrder) {
@@ -3381,8 +3365,8 @@
       renderActiveOrderBanner();
       renderDishes();
       if (store.activeTab === "cocina") renderCocina();
-      showToast(isUpdatingActiveOrder
-        ? "Comanda actualizada en cocina con el mismo ticket."
+      showToast(isAddition
+        ? "Adición enviada a cocina con el mismo ticket."
         : "¡Comanda enviada a cocina!");
     }
 
